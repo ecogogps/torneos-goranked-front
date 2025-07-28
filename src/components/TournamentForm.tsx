@@ -39,11 +39,12 @@ import {
   SEXO_OPTIONS,
   NUMERO_PARTICIPANTES_OPTIONS,
 } from "@/lib/constants";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
-import { Send, Rocket } from "lucide-react";
+import { Send, Rocket, Image as ImageIcon } from "lucide-react";
+import TournamentBanner from "./TournamentBanner";
+import * as React from "react";
 
 interface TournamentFormProps {
   onSubmit: (data: Tournament) => void;
@@ -51,6 +52,8 @@ interface TournamentFormProps {
 
 export default function TournamentForm({ onSubmit }: TournamentFormProps) {
   const { toast } = useToast();
+  const [previewImage, setPreviewImage] = React.useState<string | null>(null);
+
   const form = useForm<Tournament>({
     resolver: zodResolver(TournamentSchema),
     defaultValues: {
@@ -85,16 +88,17 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
       contacto: "Gabriel Ramos",
       telefono: "984131574",
       ballInfo: "Victa 40+",
+      bannerImage: null,
     },
   });
 
   const tipoEliminacion = form.watch("tipoEliminacion");
+  const tournamentDataForPreview = form.watch();
 
   const getSiembraOptions = () => {
     if (tipoEliminacion === 'Todos contra todos') {
       return TIPO_SIEMBRA_OPTIONS.filter(o => o.value === 'aleatorio' || o.value === 'secuencial');
     }
-    // For "Eliminacion Directa" and "Por Grupos"
     return TIPO_SIEMBRA_OPTIONS.filter(o => o.value === 'aleatorio' || o.value === 'secuencial' || o.value === 'tradicional');
   }
 
@@ -104,6 +108,19 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
       description: "Las invitaciones al torneo se han enviado correctamente.",
     });
   }
+  
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setPreviewImage(result);
+        form.setValue("bannerImage", result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   return (
     <Form {...form}>
@@ -118,7 +135,6 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Basic Info */}
             <div className="grid md:grid-cols-3 gap-6 items-start">
               <FormField
                 control={form.control}
@@ -163,7 +179,6 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
 
             <Separator />
 
-            {/* Tournament Parameters */}
             <h3 className="text-lg font-medium">Parámetros del Torneo</h3>
             <div className="grid md:grid-cols-3 gap-6">
               <FormField name="modalidad" render={({ field }) => <FormItem><FormLabel>Modalidad</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{MODALIDAD_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></FormItem>} />
@@ -268,15 +283,31 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
               <FormField name="sexo" render={({ field }) => <FormItem><FormLabel>Sexo</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{SEXO_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></FormItem>} />
             </div>
 
-            {/* Additional Config */}
             <div className="grid md:grid-cols-2 gap-6">
               <FormField name="afectaRanking" render={({ field }) => <FormItem><FormLabel>Afecta al ranking</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4"><FormItem><FormControl><RadioGroupItem value="si" /></FormControl><FormLabel>SI</FormLabel></FormItem><FormItem><FormControl><RadioGroupItem value="no" /></FormControl><FormLabel>NO</FormLabel></FormItem></RadioGroup></FormControl></FormItem>} />
               <FormField name="sorteoSaque" render={({ field }) => <FormItem><FormLabel>Sorteo de Saque</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4"><FormItem><FormControl><RadioGroupItem value="si" /></FormControl><FormLabel>SI</FormLabel></FormItem><FormItem><FormControl><RadioGroupItem value="no" /></FormControl><FormLabel>NO</FormLabel></FormItem></RadioGroup></FormControl></FormItem>} />
             </div>
 
             <Separator />
+
+            <h3 className="text-lg font-medium">Previsualización del Banner</h3>
+            <div className="grid md:grid-cols-2 gap-6 items-start">
+               <FormItem>
+                  <FormLabel>Imagen Principal del Banner (1080x1080)</FormLabel>
+                  <FormControl>
+                    <Input type="file" accept="image/*" onChange={handleImageUpload} className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90" />
+                  </FormControl>
+                  <FormDescription>
+                    Adjunte una imagen cuadrada para el banner del torneo.
+                  </FormDescription>
+               </FormItem>
+               <div className="mt-2">
+                 <TournamentBanner tournament={tournamentDataForPreview} previewImage={previewImage} />
+               </div>
+            </div>
+
+            <Separator />
             
-            {/* Prizes */}
             <h3 className="text-lg font-medium">Premios</h3>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <FormField name="premio1" render={({ field }) => <FormItem><FormLabel>1er Premio</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>} />
@@ -288,7 +319,6 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
 
             <Separator />
 
-            {/* Contact Info */}
             <h3 className="text-lg font-medium">Información de Contacto</h3>
             <div className="grid md:grid-cols-3 gap-6">
               <FormField name="contacto" render={({ field }) => <FormItem><FormLabel>Contacto</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>} />

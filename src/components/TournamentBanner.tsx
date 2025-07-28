@@ -8,9 +8,10 @@ import { Calendar, Clock, MapPin, Ticket, Award, Phone } from "lucide-react";
 
 interface TournamentBannerProps {
   tournament: Tournament;
+  previewImage?: string | null;
 }
 
-export default function TournamentBanner({ tournament }: TournamentBannerProps) {
+export default function TournamentBanner({ tournament, previewImage }: TournamentBannerProps) {
   const formattedDate = tournament.fecha
     ? format(new Date(tournament.fecha), "EEEE dd 'de' MMMM", { locale: es })
     : "Fecha no definida";
@@ -18,12 +19,14 @@ export default function TournamentBanner({ tournament }: TournamentBannerProps) 
   
   const systemInfo = `cod ${tournament.codigoTorneo} - PPH - ${tournament.modalidad} - U1800 - 60 - TODOS - RSI`;
 
+  const imageSrc = previewImage || tournament.bannerImage || "https://placehold.co/1080x1080.png";
+
   return (
     <Card className="w-full max-w-4xl mx-auto overflow-hidden shadow-2xl">
       <CardContent className="p-0">
         <div className="relative h-[400px] w-full text-white">
           <Image
-            src="https://placehold.co/1200x600.png"
+            src={imageSrc}
             alt="Fondo del torneo"
             layout="fill"
             objectFit="cover"
@@ -35,7 +38,7 @@ export default function TournamentBanner({ tournament }: TournamentBannerProps) 
             <div>
               <Badge variant="secondary" className="text-lg bg-accent text-accent-foreground">{tournament.rankingDesde ? `TORNEO U-${tournament.rankingDesde}` : 'TORNEO ABIERTO'}</Badge>
               <h2 className="text-5xl font-extrabold mt-2 text-shadow-lg shadow-black/50">
-                {tournament.nombreTorneo}
+                {tournament.nombreTorneo || "Nombre del Torneo"}
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-lg">
