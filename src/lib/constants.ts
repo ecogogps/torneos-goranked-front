@@ -16,7 +16,6 @@ export const TIPO_ELIMINACION_OPTIONS = [
   'Por Grupos',
   'Eliminacion Directa',
   'Todos contra todos',
-  'Mixto',
 ];
 
 export const SEXO_OPTIONS = ['masculino', 'femenino', 'Mixto'];
