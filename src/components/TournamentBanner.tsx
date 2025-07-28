@@ -16,7 +16,7 @@ export default function TournamentBanner({ tournament }: TournamentBannerProps) 
     : "Fecha no definida";
   const formattedTime = tournament.hora || "Hora no definida";
   
-  const systemInfo = `cod 0001 - PPH - ${tournament.modalidad} - U1800 - 60 - TODOS - RSI`;
+  const systemInfo = `cod ${tournament.codigoTorneo} - PPH - ${tournament.modalidad} - U1800 - 60 - TODOS - RSI`;
 
   return (
     <Card className="w-full max-w-4xl mx-auto overflow-hidden shadow-2xl">

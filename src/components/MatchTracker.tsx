@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Pencil, Save, Users, Swords, Info } from "lucide-react";
+import { Pencil, Save, Users, Swords } from "lucide-react";
 import * as React from "react";
 import { TIPO_SIEMBRA_OPTIONS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -49,7 +49,7 @@ export default function MatchTracker({ tournament, rounds, onUpdateMatch, seeded
                    <RoundRobinView matches={allMatches} onUpdateMatch={onUpdateMatch} />
                 </TabsContent>
                 <TabsContent value="mesa">
-                  <ResultsTableView rounds={rounds} onUpdateMatch={onUpdateMatch} />
+                  <ResultsTableView rounds={rounds} onUpdateMatch={onUpdateMatch} tournamentCode={tournament.codigoTorneo} />
                 </TabsContent>
               </Tabs>
             </CardContent>
@@ -83,7 +83,7 @@ export default function MatchTracker({ tournament, rounds, onUpdateMatch, seeded
               </div>
             </TabsContent>
             <TabsContent value="mesa">
-              <ResultsTableView rounds={rounds} onUpdateMatch={onUpdateMatch}/>
+              <ResultsTableView rounds={rounds} onUpdateMatch={onUpdateMatch} tournamentCode={tournament.codigoTorneo} />
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -97,7 +97,7 @@ export default function MatchTracker({ tournament, rounds, onUpdateMatch, seeded
         <CardHeader>
           <CardTitle className="text-3xl font-bold tracking-tight">Desarrollo del Torneo</CardTitle>
           <CardDescription>
-            TORNEO # 000236 - Siga los partidos en vivo e ingrese los resultados.
+            TORNEO # {tournament.codigoTorneo} - Siga los partidos en vivo e ingrese los resultados.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -223,7 +223,7 @@ const RoundRobinView = ({ matches, onUpdateMatch }: { matches: Match[], onUpdate
   );
 }
 
-const ResultsTableView = ({ rounds, onUpdateMatch }: { rounds: Round[], onUpdateMatch: (match: Match) => void }) => {
+const ResultsTableView = ({ rounds, onUpdateMatch, tournamentCode }: { rounds: Round[], onUpdateMatch: (match: Match) => void, tournamentCode: string }) => {
   const [editingMatchId, setEditingMatchId] = React.useState<string | null>(null);
   const [currentScores, setCurrentScores] = React.useState<{ p1: number, p2: number }>({ p1: 0, p2: 0 });
 
@@ -245,7 +245,7 @@ const ResultsTableView = ({ rounds, onUpdateMatch }: { rounds: Round[], onUpdate
     <div className="space-y-4">
       {rounds.map((round) => (
         <div key={round.title}>
-            <h3 className="text-lg font-semibold my-2 p-2 bg-muted rounded-md">{round.title} - TORNEO #000236</h3>
+            <h3 className="text-lg font-semibold my-2 p-2 bg-muted rounded-md">{round.title} - TORNEO #{tournamentCode}</h3>
             <Table>
                 <TableHeader>
                     <TableRow>

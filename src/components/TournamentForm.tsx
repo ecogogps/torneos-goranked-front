@@ -54,7 +54,7 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
   const form = useForm<Tournament>({
     resolver: zodResolver(TournamentSchema),
     defaultValues: {
-      codigoTorneo: "GENERADO AUTOMÁTICAMENTE",
+      codigoTorneo: "236",
       pais: "Ecuador",
       provincia: "Guayas",
       ciudad: "Guayaquil",
