@@ -101,13 +101,6 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
     }
     return TIPO_SIEMBRA_OPTIONS.filter(o => o.value === 'aleatorio' || o.value === 'secuencial' || o.value === 'tradicional');
   }
-
-  function handleSendInvitations() {
-    toast({
-      title: "Invitaciones Enviadas",
-      description: "Las invitaciones al torneo se han enviado correctamente.",
-    });
-  }
   
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -329,9 +322,6 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
         </Card>
         
         <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" size="lg" onClick={handleSendInvitations}>
-            <Send className="mr-2" /> ENVIAR invitaciones
-          </Button>
           <Button type="submit" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
             <Rocket className="mr-2" /> CREAR TORNEO
           </Button>
