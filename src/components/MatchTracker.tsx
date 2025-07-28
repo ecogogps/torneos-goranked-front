@@ -34,7 +34,27 @@ export default function MatchTracker({ tournament, rounds, onUpdateMatch, seeded
   const renderBrackets = () => {
     if (isRoundRobin) {
        const allMatches = rounds.flatMap(r => r.matches);
-       return <RoundRobinView matches={allMatches} onUpdateMatch={onUpdateMatch} />;
+       return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Swords />Cuadro del Torneo</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <Tabs defaultValue="cronograma">
+                <TabsList>
+                  <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
+                  <TabsTrigger value="mesa">Mesa</TabsTrigger>
+                </TabsList>
+                <TabsContent value="cronograma">
+                   <RoundRobinView matches={allMatches} onUpdateMatch={onUpdateMatch} />
+                </TabsContent>
+                <TabsContent value="mesa">
+                  <ResultsTableView rounds={rounds} onUpdateMatch={onUpdateMatch} />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+       );
     }
 
     return (
@@ -50,7 +70,7 @@ export default function MatchTracker({ tournament, rounds, onUpdateMatch, seeded
             </TabsList>
             <TabsContent value="cronograma" className="overflow-x-auto py-4">
               <div className="flex gap-4">
-                {rounds.map((round, roundIndex) => (
+                {rounds.map((round) => (
                   <div key={round.title} className="flex flex-col items-center flex-shrink-0 w-64">
                      <h3 className="text-xl font-bold mb-4">{round.title}</h3>
                      <div className="flex flex-col gap-8 w-full">
@@ -158,47 +178,40 @@ const RoundRobinView = ({ matches, onUpdateMatch }: { matches: Match[], onUpdate
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Swords />Partidos (Todos contra todos)</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {matches.map((match) => (
-            <Card key={match.id} className={cn({'border-green-400': match.isFinished})}>
-               <CardHeader className="p-4 flex-row items-center justify-between">
-                  <p className="font-semibold">{match.title}</p>
-                  <div>
-                    {editingMatchId === match.id ? (
-                       <Button variant="ghost" size="icon" onClick={() => handleSave(match)}><Save className="h-4 w-4" /></Button>
-                    ) : (
-                       <Button variant="ghost" size="icon" onClick={() => handleEdit(match)}><Pencil className="h-4 w-4" /></Button>
-                    )}
-                  </div>
-               </CardHeader>
-               <CardContent className="p-4 pt-0 space-y-2">
-                 <div className="flex justify-between items-center">
-                   <span className={cn({'font-bold': match.winner?.name === match.p1.name})}>{match.p1.name} {match.p1.rank ? `(${match.p1.rank})` : ''}</span>
-                   {editingMatchId === match.id ? (
-                      <Input type="number" className="w-16 h-8" value={currentScores.p1} onChange={(e) => setCurrentScores(s => ({ ...s, p1: Number(e.target.value) }))} />
-                   ) : (
-                      <Badge variant={match.winner?.name === match.p1.name ? "default" : "secondary"}>{match.p1.score}</Badge>
-                   )}
-                 </div>
-                  <div className="flex justify-between items-center">
-                   <span className={cn({'font-bold': match.winner?.name === match.p2.name})}>{match.p2.name} {match.p2.rank ? `(${match.p2.rank})` : ''}</span>
-                    {editingMatchId === match.id ? (
-                      <Input type="number" className="w-16 h-8" value={currentScores.p2} onChange={(e) => setCurrentScores(s => ({ ...s, p2: Number(e.target.value) }))} />
-                   ) : (
-                      <Badge variant={match.winner?.name === match.p2.name ? "default" : "secondary"}>{match.p2.score}</Badge>
-                   )}
-                 </div>
-               </CardContent>
-            </Card>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
+      {matches.map((match) => (
+        <Card key={match.id} className={cn({'border-green-400': match.isFinished})}>
+           <CardHeader className="p-4 flex-row items-center justify-between">
+              <p className="font-semibold">{match.title}</p>
+              <div>
+                {editingMatchId === match.id ? (
+                   <Button variant="ghost" size="icon" onClick={() => handleSave(match)}><Save className="h-4 w-4" /></Button>
+                ) : (
+                   <Button variant="ghost" size="icon" onClick={() => handleEdit(match)}><Pencil className="h-4 w-4" /></Button>
+                )}
+              </div>
+           </CardHeader>
+           <CardContent className="p-4 pt-0 space-y-2">
+             <div className="flex justify-between items-center">
+               <span className={cn({'font-bold': match.winner?.name === match.p1.name})}>{match.p1.name} {match.p1.rank ? `(${match.p1.rank})` : ''}</span>
+               {editingMatchId === match.id ? (
+                  <Input type="number" className="w-16 h-8" value={currentScores.p1} onChange={(e) => setCurrentScores(s => ({ ...s, p1: Number(e.target.value) }))} />
+               ) : (
+                  <Badge variant={match.winner?.name === match.p1.name ? "default" : "secondary"}>{match.p1.score}</Badge>
+               )}
+             </div>
+              <div className="flex justify-between items-center">
+               <span className={cn({'font-bold': match.winner?.name === match.p2.name})}>{match.p2.name} {match.p2.rank ? `(${match.p2.rank})` : ''}</span>
+                {editingMatchId === match.id ? (
+                  <Input type="number" className="w-16 h-8" value={currentScores.p2} onChange={(e) => setCurrentScores(s => ({ ...s, p2: Number(e.target.value) }))} />
+               ) : (
+                  <Badge variant={match.winner?.name === match.p2.name ? "default" : "secondary"}>{match.p2.score}</Badge>
+               )}
+             </div>
+           </CardContent>
+        </Card>
+      ))}
+    </div>
   );
 }
 
