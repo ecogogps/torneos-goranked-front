@@ -12,6 +12,9 @@ import { Pencil, Save, Users, Swords, Info } from "lucide-react";
 import * as React from "react";
 import { TIPO_SIEMBRA_OPTIONS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface MatchTrackerProps {
   tournament: Tournament;
@@ -61,14 +64,8 @@ export default function MatchTracker({ tournament }: MatchTrackerProps) {
     
     return allMatches;
   }
-
-  const renderBrackets = () => {
-    if (isRoundRobin) {
-       const allMatches = generateRoundRobinMatches();
-       return <RoundRobinView matches={allMatches} />;
-    }
-
-    if (isDirectElimination || isGroupStage) {
+  
+  const generateBracketRounds = () => {
       const numPlayers = players.length;
       let rounds = [];
       let currentPlayers = [...players];
@@ -104,31 +101,53 @@ export default function MatchTracker({ tournament }: MatchTrackerProps) {
           let roundTitle = `Round ${roundNumber}`;
           if(nextRoundMatches.length === 1) roundTitle = 'Final';
           if(nextRoundMatches.length === 2) roundTitle = 'Semi-Finals';
-          if(nextRoundMatches.length === 4) roundTitle = 'Quarter-Finals';
+          if(nextRoundMatches.length <= 4) roundTitle = 'Quarter-Finals';
 
           rounds.push({ title: roundTitle, matches: nextRoundMatches });
           winners = nextRoundMatches;
       }
-      
+      return rounds;
+  }
+
+  const renderBrackets = () => {
+    if (isRoundRobin) {
+       const allMatches = generateRoundRobinMatches();
+       return <RoundRobinView matches={allMatches} />;
+    }
+
+    if (isDirectElimination || isGroupStage) {
+      const rounds = generateBracketRounds();
+      const allMatches = rounds.flatMap(round => round.matches.map(match => ({ ...match, roundTitle: round.title })));
 
       return (
         <Card>
           <CardHeader>
              <CardTitle className="flex items-center gap-2"><Swords />Cuadro del Torneo</CardTitle>
           </CardHeader>
-          <CardContent className="overflow-x-auto p-4">
-            <div className="flex gap-4">
-              {rounds.map((round, roundIndex) => (
-                <div key={roundIndex} className="flex flex-col items-center flex-shrink-0 w-64">
-                   <h3 className="text-xl font-bold mb-4">{round.title}</h3>
-                   <div className="flex flex-col gap-8 w-full">
-                      {round.matches.map((match, matchIndex) => (
-                         <BracketMatch key={matchIndex} match={match} matchNumber={matchIndex + 1} />
-                      ))}
-                   </div>
+          <CardContent className="p-4">
+             <Tabs defaultValue="cronograma">
+              <TabsList>
+                <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
+                <TabsTrigger value="mesa">Mesa</TabsTrigger>
+              </TabsList>
+              <TabsContent value="cronograma" className="overflow-x-auto py-4">
+                <div className="flex gap-4">
+                  {rounds.map((round, roundIndex) => (
+                    <div key={roundIndex} className="flex flex-col items-center flex-shrink-0 w-64">
+                       <h3 className="text-xl font-bold mb-4">{round.title}</h3>
+                       <div className="flex flex-col gap-8 w-full">
+                          {round.matches.map((match, matchIndex) => (
+                             <BracketMatch key={matchIndex} match={match} matchNumber={matchIndex + 1} />
+                          ))}
+                       </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </TabsContent>
+              <TabsContent value="mesa">
+                <ResultsTableView rounds={rounds} />
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       );
@@ -240,3 +259,79 @@ const RoundRobinView = ({ matches }: { matches: any[] }) => (
     </CardContent>
   </Card>
 );
+
+const ResultsTableView = ({ rounds }: { rounds: any[] }) => {
+  // Mock scores and winners for display
+  const matchesWithScores = rounds.flatMap(r => r.matches).map((match, i) => ({
+    ...match,
+    matchNumber: i + 1,
+    table: i + 1,
+    p1: { ...match.p1, score: Math.floor(Math.random() * 4) },
+    p2: { ...match.p2, score: Math.floor(Math.random() * 4) },
+  }));
+
+  return (
+    <div className="space-y-4">
+      {rounds.map((round, roundIndex) => {
+        const roundMatches = matchesWithScores.filter(m => round.matches.some(rm => rm.title === m.title));
+        return (
+            <div key={roundIndex}>
+                <h3 className="text-lg font-semibold my-2 p-2 bg-muted rounded-md">{round.title} - TORNEO #000236</h3>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[150px]">INFORME DETALLADO</TableHead>
+                            <TableHead className="w-[100px]">Mesa</TableHead>
+                            <TableHead className="text-center">PARTICIPANTES</TableHead>
+                            <TableHead className="w-[100px] text-right">Acciones</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {roundMatches.map((match) => (
+                            <TableRow key={match.matchNumber}>
+                                <TableCell>Match {match.matchNumber}</TableCell>
+                                <TableCell>
+                                    <Select defaultValue={`Mesa #${match.table}`}>
+                                        <SelectTrigger className="w-[120px]">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value={`Mesa #${match.table}`}>Mesa #{match.table}</SelectItem>
+                                            <SelectItem value="Mesa #1">Mesa #1</SelectItem>
+                                            <SelectItem value="Mesa #2">Mesa #2</SelectItem>
+                                            <SelectItem value="Mesa #3">Mesa #3</SelectItem>
+                                            <SelectItem value="Mesa #4">Mesa #4</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                    <div className="flex items-center justify-center gap-2">
+                                        {match.p1.score > match.p2.score && <div className="w-4 h-4 rounded-full bg-green-500"></div>}
+                                        <Badge variant="secondary" className="text-lg">{match.p1.score}</Badge>
+                                        <div className="text-right">
+                                            <p>{match.p1.name}</p>
+                                            <p className="text-xs text-muted-foreground">{match.p1.rank}</p>
+                                        </div>
+                                        <span className="mx-2 font-bold">Vs</span>
+                                        <div className="text-left">
+                                           <p>{match.p2.name}</p>
+                                           <p className="text-xs text-muted-foreground">{match.p2.rank}</p>
+                                        </div>
+                                        <Badge variant="secondary" className="text-lg">{match.p2.score}</Badge>
+                                        {match.p2.score > match.p1.score && <div className="w-4 h-4 rounded-full bg-green-500"></div>}
+                                    </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon"><Save className="h-4 w-4" /></Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+        )
+      })}
+    </div>
+  );
+};
