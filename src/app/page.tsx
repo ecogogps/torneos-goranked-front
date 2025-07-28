@@ -12,6 +12,41 @@ import { aiAssistedPlayerSeeding, AiAssistedPlayerSeedingInput } from "@/ai/flow
 
 type View = "form" | "match" | "podium";
 
+const fictitiousPlayers: Player[] = [
+    { name: "Luis Nan", rank: 1783 },
+    { name: "Luis Coco Rodríguez", rank: 1789 },
+    { name: "Luis Fernando Gonzales", rank: 1650 },
+    { name: "Luis Valencia", rank: 1653 },
+    { name: "Walter Aguirre", rank: 1623 },
+    { name: "Jose Gomez", rank: 1610 },
+    { name: "Carlos Freire", rank: 1432 },
+    { name: "Luis Prado", rank: 1325 },
+    { name: "Player 9", rank: 1300 },
+    { name: "Player 10", rank: 1280 },
+    { name: "Player 11", rank: 1260 },
+    { name: "Player 12", rank: 1240 },
+    { name: "Player 13", rank: 1220 },
+    { name: "Player 14", rank: 1200 },
+    { name: "Player 15", rank: 1180 },
+    { name: "Player 16", rank: 1160 },
+    { name: "Player 17", rank: 1140 },
+    { name: "Player 18", rank: 1120 },
+    { name: "Player 19", rank: 1100 },
+    { name: "Player 20", rank: 1080 },
+    { name: "Player 21", rank: 1060 },
+    { name: "Player 22", rank: 1040 },
+    { name: "Player 23", rank: 1020 },
+    { name: "Player 24", rank: 1000 },
+    { name: "Player 25", rank: 980 },
+    { name: "Player 26", rank: 960 },
+    { name: "Player 27", rank: 940 },
+    { name: "Player 28", rank: 920 },
+    { name: "Player 29", rank: 900 },
+    { name: "Player 30", rank: 880 },
+    { name: "Player 31", rank: 860 },
+    { name: "Player 32", rank: 840 },
+];
+
 export default function Home() {
   const [view, setView] = useState<View>("form");
   const [tournamentData, setTournamentData] = useState<Tournament | null>(null);
@@ -34,11 +69,11 @@ export default function Home() {
       roundMatches.push({
         id: `m-${rounds.length}-${roundMatches.length}`,
         p1: { ...p1, score: 0, sets: [] },
-        p2: { ...p2, score: 0, sets: [] },
+        p2: p2 ? { ...p2, score: 0, sets: [] } : { name: 'BYE', score: 0, sets: []},
         title: `Match ${roundMatches.length + 1}`,
-        winner: undefined,
+        winner: p2 ? undefined : p1,
         table: roundMatches.length + 1,
-        isFinished: false,
+        isFinished: !p2,
       });
     }
     rounds.push({ title: `Round 1`, matches: roundMatches });
@@ -62,6 +97,12 @@ export default function Home() {
           isFinished: false,
         };
 
+        if (p1 && !p2) {
+          match.winner = p1;
+          match.isFinished = true;
+          match.p2.name = 'BYE'
+        }
+
         nextRoundMatches.push(match);
         nextRoundWinners.push(match.winner);
       }
@@ -83,14 +124,12 @@ export default function Home() {
     const numPlayers = players.length;
     if (numPlayers < 4) return generateBracketRounds(players); // Not enough for groups
 
-    // This logic assumes traditional seeding where players are paired up into groups
-    const groups: Player[][] = [];
-    for (let i = 0; i < numPlayers; i += 2) {
-      const group = [players[i]];
-      if (players[i + 1]) {
-        group.push(players[i+1]);
-      }
-      groups.push(group);
+    const numGroups = Math.floor(numPlayers / 2);
+    const groups: Player[][] = Array.from({ length: numGroups }, () => []);
+    
+    // Distribute players into groups based on traditional seeding
+    for (let i = 0; i < numPlayers; i++) {
+        groups[i % numGroups].push(players[i]);
     }
     
     const groupMatches: Match[] = [];
@@ -114,7 +153,6 @@ export default function Home() {
     const groupRound: Round = { title: "Fase de Grupos", matches: groupMatches };
     
     // Create placeholders for the knockout stage
-    const numGroups = groups.length;
     const knockoutPlayers: Player[] = Array.from({ length: numGroups }, (_, i) => ({
       name: `Winner Group ${i + 1}`,
       rank: 0,
@@ -183,10 +221,8 @@ export default function Home() {
     setIsLoading(true);
     setTournamentData(data);
     
-    const initialPlayers = Array.from({ length: Number(data.numeroParticipantes) || 8 }, (_, i) => ({
-      name: `Player ${i + 1}`,
-      rank: Math.floor(1500 + Math.random() * 500)
-    }));
+    const numParticipants = Number(data.numeroParticipantes) || 8;
+    const initialPlayers = fictitiousPlayers.slice(0, numParticipants);
 
     const seedingInput: AiAssistedPlayerSeedingInput = {
       playerNames: initialPlayers.map(p => p.name),
@@ -265,10 +301,10 @@ export default function Home() {
         
         if (allGroupMatchesFinished) {
             const groupWinners: Player[] = [];
-            const numPlayers = seededPlayers.length;
-            const groups: Player[][] = [];
-             for (let i = 0; i < numPlayers; i += 2) {
-                groups.push([seededPlayers[i], seededPlayers[i+1]]);
+            const numGroups = Math.floor(seededPlayers.length / 2);
+            const groups: Player[][] = Array.from({ length: numGroups }, () => []);
+            for (let i = 0; i < seededPlayers.length; i++) {
+                groups[i % numGroups].push(seededPlayers[i]);
             }
 
             groups.forEach((group, index) => {
@@ -327,10 +363,10 @@ export default function Home() {
                 const p1Winner = currentRound.matches[p1SourceMatchIndex]?.winner;
                 const p2Winner = currentRound.matches[p2SourceMatchIndex]?.winner;
 
-                if (p1Winner && nextMatch.p1.name.startsWith('Winner')) {
+                if (p1Winner && (nextMatch.p1.name.startsWith('Winner') || nextMatch.p1.name === 'BYE')) {
                     nextMatch.p1 = {...p1Winner, score: 0, sets: []};
                 }
-                if (p2Winner && nextMatch.p2.name.startsWith('Winner')) {
+                if (p2Winner && (nextMatch.p2.name.startsWith('Winner') || nextMatch.p2.name === 'BYE')) {
                     nextMatch.p2 = {...p2Winner, score: 0, sets: []};
                 }
 
@@ -339,6 +375,9 @@ export default function Home() {
                     const p2s = Number(nextMatch.p2.score);
                     if(p1s > 0 || p2s > 0){
                        nextMatch.winner = p1s > p2s ? nextMatch.p1 : nextMatch.p2;
+                       nextMatch.isFinished = true;
+                    } else if (nextMatch.p2.name === 'BYE' && nextMatch.p1.name !== 'BYE') {
+                       nextMatch.winner = nextMatch.p1;
                        nextMatch.isFinished = true;
                     } else {
                        nextMatch.winner = undefined;
