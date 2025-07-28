@@ -6,39 +6,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Pencil, Save, Users, Swords, Info } from "lucide-react";
 import * as React from "react";
 import { TIPO_SIEMBRA_OPTIONS } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
 interface MatchTrackerProps {
   tournament: Tournament;
 }
-
-const renderSetTable = (sets: number[]) => (
-  <Table className="mt-2 text-xs">
-    <TableHeader>
-      <TableRow>
-        {sets.map((_, i) => <TableHead key={i}>Set {i+1}</TableHead>)}
-      </TableRow>
-    </TableHeader>
-    <TableBody>
-      <TableRow>
-        {sets.map((score, i) => <TableCell key={i}>{score}</TableCell>)}
-      </TableRow>
-    </TableBody>
-  </Table>
-);
-
 
 export default function MatchTracker({ tournament }: MatchTrackerProps) {
   const isGroupStage = tournament.tipoEliminacion === 'Por Grupos';
@@ -78,7 +55,7 @@ export default function MatchTracker({ tournament }: MatchTrackerProps) {
     if (rounds > 1) {
         const singleRoundMatches = [...allMatches];
         for(let r = 1; r < rounds; r++) {
-            allMatches = allMatches.concat(singleRoundMatches);
+            allMatches = allMatches.concat(singleRoundMatches.map(m => ({...m}))); // Create new objects
         }
     }
     
@@ -88,31 +65,73 @@ export default function MatchTracker({ tournament }: MatchTrackerProps) {
   const renderBrackets = () => {
     if (isRoundRobin) {
        const allMatches = generateRoundRobinMatches();
-       return <Round title={`Partidos (Ronda Única)`} matches={allMatches} />
+       return <RoundRobinView matches={allMatches} />;
     }
 
     if (isDirectElimination || isGroupStage) {
-       // Logic for knockout stages
-       const round1Matches = [];
-       for (let i = 0; i < players.length; i += 2) {
-         if (players[i+1]) {
-           round1Matches.push({ p1: players[i], p2: players[i+1], p1_score: 0, p2_score:0, sets1: [], sets2: [] });
-         } else {
-            // Handle BYE
-            round1Matches.push({ p1: players[i], p2: { name: 'BYE', rank: 0}, p1_score: 0, p2_score:0, sets1: [], sets2: [] });
-         }
-       }
-       // Dummy data for subsequent rounds
-       const semiFinalsMatches = round1Matches.slice(0, round1Matches.length / 2).map((_, i) => ({ p1: { name: 'Winner M' + (2*i+1), rank: ''}, p2: { name: 'Winner M' + (2*i+2), rank: ''}, p1_score: 0, p2_score:0, sets1: [], sets2: [] }));
-       const finalMatch = [{ p1: { name: 'Winner SF1', rank: ''}, p2: { name: 'Winner SF2', rank: ''}, p1_score: 0, p2_score:0, sets1: [], sets2: [] }];
+      const numPlayers = players.length;
+      let rounds = [];
+      let currentPlayers = [...players];
 
-        return (
-            <>
-              <Round title="Round 1" matches={round1Matches.map(m => ({ p1: {...m.p1, score: m.p1_score, sets: m.sets1}, p2: {...m.p2, score: m.p2_score, sets: m.sets2} }))} />
-              <Round title="Semi-Finals" matches={semiFinalsMatches.map(m => ({ p1: {...m.p1, score: m.p1_score, sets: m.sets1}, p2: {...m.p2, score: m.p2_score, sets: m.sets2} }))} />
-              <Round title="Final" matches={finalMatch.map(m => ({ p1: {...m.p1, score: m.p1_score, sets: m.sets1}, p2: {...m.p2, score: m.p2_score, sets: m.sets2} }))} isFinal />
-            </>
-        )
+      // Create initial round
+      let roundMatches = [];
+      if(numPlayers > 0) {
+        if (numPlayers % 2 !== 0) {
+            currentPlayers.push({ name: 'BYE', rank: 0 });
+        }
+        for (let i = 0; i < currentPlayers.length; i += 2) {
+            roundMatches.push({ 
+                p1: currentPlayers[i], 
+                p2: currentPlayers[i+1] || { name: 'BYE', rank: 0 },
+                title: `Match ${roundMatches.length + 1}`
+            });
+        }
+        rounds.push({ title: `Round 1`, matches: roundMatches });
+      }
+
+      // Generate subsequent rounds
+      let winners = roundMatches;
+      while(winners.length > 1) {
+          let nextRoundMatches = [];
+          for (let i = 0; i < winners.length; i += 2) {
+              nextRoundMatches.push({
+                  p1: { name: `Winner of ${winners[i].title}` },
+                  p2: { name: `Winner of ${winners[i+1]?.title || 'BYE'}` },
+                  title: `Match ${roundMatches.length + nextRoundMatches.length + 1}`
+              });
+          }
+          const roundNumber = rounds.length + 1;
+          let roundTitle = `Round ${roundNumber}`;
+          if(nextRoundMatches.length === 1) roundTitle = 'Final';
+          if(nextRoundMatches.length === 2) roundTitle = 'Semi-Finals';
+          if(nextRoundMatches.length === 4) roundTitle = 'Quarter-Finals';
+
+          rounds.push({ title: roundTitle, matches: nextRoundMatches });
+          winners = nextRoundMatches;
+      }
+      
+
+      return (
+        <Card>
+          <CardHeader>
+             <CardTitle className="flex items-center gap-2"><Swords />Cuadro del Torneo</CardTitle>
+          </CardHeader>
+          <CardContent className="overflow-x-auto p-4">
+            <div className="flex gap-4">
+              {rounds.map((round, roundIndex) => (
+                <div key={roundIndex} className="flex flex-col items-center flex-shrink-0 w-64">
+                   <h3 className="text-xl font-bold mb-4">{round.title}</h3>
+                   <div className="flex flex-col gap-8 w-full">
+                      {round.matches.map((match, matchIndex) => (
+                         <BracketMatch key={matchIndex} match={match} matchNumber={matchIndex + 1} />
+                      ))}
+                   </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      );
     }
     return null;
   }
@@ -138,12 +157,28 @@ export default function MatchTracker({ tournament }: MatchTrackerProps) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Si el número de jugadores no es una potencia de 2 (4, 8, 16, 32...), el sistema creará los BYEs necesarios para completar la llave. Un BYE otorga un pase libre a la siguiente ronda.
+            Si el número de jugadores no es una potencia de 2 (e.g. 4, 8, 16, 32), el sistema creará los BYEs necesarios para completar la llave. Un BYE otorga un pase libre a la siguiente ronda.
           </p>
         </CardContent>
       </Card>
     </div>
   );
+}
+
+const BracketMatch = ({ match, matchNumber }: { match: any, matchNumber: number }) => {
+  return (
+    <div className="bg-card border rounded-lg w-full relative">
+       <div className="p-2 border-b bg-muted text-sm font-semibold">{match.title}</div>
+       <div className="p-2 flex justify-between items-center">
+         <span>{match.p1.name}</span>
+         <Badge variant="secondary">0</Badge>
+       </div>
+       <div className="p-2 flex justify-between items-center border-t">
+         <span>{match.p2.name}</span>
+         <Badge variant="secondary">0</Badge>
+       </div>
+    </div>
+  )
 }
 
 const GroupStage = () => (
@@ -173,64 +208,35 @@ const GroupStage = () => (
     </Card>
 )
 
-const Round = ({ title, matches, isFinal = false }: { title: string, matches: any[], isFinal?: boolean }) => (
+const RoundRobinView = ({ matches }: { matches: any[] }) => (
   <Card>
     <CardHeader>
-      <CardTitle className="flex items-center gap-2"><Swords /> {title}</CardTitle>
+      <CardTitle className="flex items-center gap-2"><Swords />Partidos (Todos contra todos)</CardTitle>
     </CardHeader>
     <CardContent>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Match</TableHead>
-            <TableHead>Jugadores (Ranking)</TableHead>
-            <TableHead className="text-center">Resultado</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {matches.map((match, i) => (
-            <React.Fragment key={`${match.p1.name}-${match.p2.name}-${i}`}>
-              <TableRow>
-                <TableCell className="font-medium">{isFinal ? 'Final Match 01' : `Match ${i + 1}`}</TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-between">
-                    <span>{match.p1.name} {match.p1.rank ? `(${match.p1.rank})` : ''}</span>
-                    <span className="text-muted-foreground mx-2">Vs</span>
-                    <span>{match.p2.name} {match.p2.rank ? `(${match.p2.rank})` : ''}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-center">
-                  <Badge variant={match.p1.score > match.p2.score ? "default" : "secondary"}>{match.p1.score}</Badge>
-                  <span className="mx-2">-</span>
-                  <Badge variant={match.p2.score > match.p1.score ? "default" : "secondary"}>{match.p2.score}</Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                    <Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon"><Save className="h-4 w-4" /></Button>
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell colSpan={4} className="p-0">
-                  <div className="p-4 bg-muted/50">
-                    <h4 className="font-semibold mb-2">Detalle de Puntos por Set:</h4>
-                    <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                            <p className="font-medium">{match.p1.name}</p>
-                            {renderSetTable(match.p1.sets)}
-                        </div>
-                        <div>
-                            <p className="font-medium">{match.p2.name}</p>
-                            {renderSetTable(match.p2.sets)}
-                        </div>
-                    </div>
-                  </div>
-                </TableCell>
-              </TableRow>
-            </React.Fragment>
-          ))}
-        </TableBody>
-      </Table>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {matches.map((match, i) => (
+          <Card key={`${match.p1.name}-${match.p2.name}-${i}`}>
+             <CardHeader className="p-4 flex-row items-center justify-between">
+                <p className="font-semibold">Match {i + 1}</p>
+                <div>
+                  <Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon"><Save className="h-4 w-4" /></Button>
+                </div>
+             </CardHeader>
+             <CardContent className="p-4 pt-0 space-y-2">
+               <div className="flex justify-between items-center">
+                 <span>{match.p1.name} {match.p1.rank ? `(${match.p1.rank})` : ''}</span>
+                 <Badge variant={match.p1.score > match.p2.score ? "default" : "secondary"}>{match.p1.score}</Badge>
+               </div>
+                <div className="flex justify-between items-center">
+                 <span>{match.p2.name} {match.p2.rank ? `(${match.p2.rank})` : ''}</span>
+                 <Badge variant={match.p2.score > match.p1.score ? "default" : "secondary"}>{match.p2.score}</Badge>
+               </div>
+             </CardContent>
+          </Card>
+        ))}
+      </div>
     </CardContent>
   </Card>
 );
