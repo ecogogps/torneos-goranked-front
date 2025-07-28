@@ -69,6 +69,7 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
       tipoSiembra: "aleatorio",
       tipoEliminacion: "Por Grupos",
       numeroParticipantes: "8",
+      numeroRondas: "",
       rankingDesde: "U800",
       rankingHasta: "",
       edadDesde: "",
@@ -166,8 +167,31 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
             <div className="grid md:grid-cols-3 gap-6">
               <FormField name="modalidad" render={({ field }) => <FormItem><FormLabel>Modalidad</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{MODALIDAD_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></FormItem>} />
               <FormField name="tipoPartidos" render={({ field }) => <FormItem><FormLabel>Tipo de Partidos</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{TIPO_PARTIDOS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></FormItem>} />
-              <FormField name="tipoEliminacion" render={({ field }) => <FormItem><FormLabel>Tipo de Eliminación</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="ring-2 ring-accent"><SelectValue /></SelectTrigger></FormControl><SelectContent>{TIPO_ELIMINACION_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></FormItem>} />
               
+              <FormField
+                control={form.control}
+                name="tipoEliminacion"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Eliminación</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="ring-2 ring-accent">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {TIPO_ELIMINACION_OPTIONS.map((o) => (
+                          <SelectItem key={o} value={o}>
+                            {o}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+
               {tipoEliminacion && (
                 <>
                    <FormField
