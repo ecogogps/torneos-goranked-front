@@ -94,7 +94,10 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
     if (tipoEliminacion === 'Todos contra todos') {
       return TIPO_SIEMBRA_OPTIONS.filter(o => o.value === 'aleatorio' || o.value === 'secuencial');
     }
-    return TIPO_SIEMBRA_OPTIONS.filter(o => o.value !== 'tradicional');
+    if (tipoEliminacion === 'Eliminacion Directa' || tipoEliminacion === 'Por Grupos') {
+      return TIPO_SIEMBRA_OPTIONS.filter(o => o.value === 'aleatorio' || o.value === 'culebrita' || o.value === 'secuencial');
+    }
+    return TIPO_SIEMBRA_OPTIONS;
   }
 
   function handleSendInvitations() {
@@ -174,7 +177,15 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo de Eliminación</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        if (value !== 'Todos contra todos') {
+                          form.setValue('numeroRondas', '');
+                        }
+                      }}
+                      defaultValue={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger className="ring-2 ring-accent">
                           <SelectValue />
@@ -192,70 +203,72 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
                 )}
               />
 
-              {tipoEliminacion && (
-                <>
-                   <FormField
-                    control={form.control}
-                    name="numeroParticipantes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Número de Participantes</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccione número" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {NUMERO_PARTICIPANTES_OPTIONS.map(o => <SelectItem key={o} value={String(o)}>{o}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                         {tipoEliminacion === 'Por Grupos' && form.getValues('numeroParticipantes') && (
-                          <FormDescription>
-                            Se generarán {Number(form.getValues('numeroParticipantes')) / 2} grupos.
-                          </FormDescription>
-                        )}
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="tipoSiembra"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tipo de Siembra</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Elija orden de siembra" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {getSiembraOptions().map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
-
-                  {tipoEliminacion === 'Todos contra todos' && (
-                     <FormField
-                      control={form.control}
-                      name="numeroRondas"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Número de Rondas</FormLabel>
-                          <FormControl>
-                            <Input type="number" {...field} />
-                          </FormControl>
-                        </FormItem>
+              {(tipoEliminacion === 'Eliminacion Directa' || tipoEliminacion === 'Por Grupos' || tipoEliminacion === 'Todos contra todos') && (
+                <FormField
+                  control={form.control}
+                  name="numeroParticipantes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número de Participantes</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccione número" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {NUMERO_PARTICIPANTES_OPTIONS.map(o => <SelectItem key={o} value={String(o)}>{o}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                        {tipoEliminacion === 'Por Grupos' && form.getValues('numeroParticipantes') && (
+                        <FormDescription>
+                          Se generarán {Number(form.getValues('numeroParticipantes')) / 2} grupos.
+                        </FormDescription>
                       )}
-                    />
+                    </FormItem>
                   )}
-                </>
+                />
+              )}
+              
+              {(tipoEliminacion === 'Eliminacion Directa' || tipoEliminacion === 'Por Grupos' || tipoEliminacion === 'Todos contra todos') && (
+                <FormField
+                  control={form.control}
+                  name="tipoSiembra"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Siembra</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Elija orden de siembra" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {getSiembraOptions().map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
               )}
 
+              {tipoEliminacion === 'Todos contra todos' && (
+                  <FormField
+                  control={form.control}
+                  name="numeroRondas"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número de Rondas</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+            
+            <div className="grid md:grid-cols-3 gap-6">
               <FormItem><FormLabel>Ranking</FormLabel><div className="flex gap-2 items-center"><FormControl><Input {...form.register("rankingDesde")} placeholder="Desde" /></FormControl><span>a</span><FormControl><Input {...form.register("rankingHasta")} placeholder="Hasta" /></FormControl></div></FormItem>
               <FormItem><FormLabel>Edad</FormLabel><div className="flex gap-2 items-center"><FormControl><Input {...form.register("edadDesde")} placeholder="Desde" /></FormControl><span>a</span><FormControl><Input {...form.register("edadHasta")} placeholder="Hasta" /></FormControl></div></FormItem>
               <FormField name="sexo" render={({ field }) => <FormItem><FormLabel>Sexo</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{SEXO_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></FormItem>} />
