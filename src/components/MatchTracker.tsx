@@ -86,16 +86,6 @@ export default function MatchTracker({ tournament, rounds, onUpdateMatch, seeded
 
       {renderBrackets()}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Info />Manejo de Jugadores Incompletos (BYE)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Si el número de jugadores no es una potencia de 2 (e.g. 4, 8, 16, 32), el sistema creará los BYEs necesarios para completar la llave. Un BYE otorga un pase libre a la siguiente ronda.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 }
@@ -262,7 +252,7 @@ const ResultsTableView = ({ rounds, onUpdateMatch }: { rounds: Round[], onUpdate
                             </TableCell>
                             <TableCell className="text-center">
                                 <div className="flex items-center justify-center gap-2">
-                                    {match.winner?.name === match.p1.name && match.p1.name !== 'BYE' && <div className="w-4 h-4 rounded-full bg-green-500"></div>}
+                                    {match.winner?.name === match.p1.name && <div className="w-4 h-4 rounded-full bg-green-500"></div>}
                                     
                                     {editingMatchId === match.id ? (
                                       <Input type="number" className="w-16 h-8 text-lg" value={currentScores.p1} onChange={(e) => setCurrentScores(s => ({ ...s, p1: Number(e.target.value) }))} />
@@ -286,14 +276,14 @@ const ResultsTableView = ({ rounds, onUpdateMatch }: { rounds: Round[], onUpdate
                                       <Badge variant="secondary" className="text-lg">{match.p2.score}</Badge>
                                     )}
 
-                                    {match.winner?.name === match.p2.name && match.p2.name !== 'BYE' && <div className="w-4 h-4 rounded-full bg-green-500"></div>}
+                                    {match.winner?.name === match.p2.name && <div className="w-4 h-4 rounded-full bg-green-500"></div>}
                                 </div>
                             </TableCell>
                             <TableCell className="text-right">
                                 {editingMatchId === match.id ? (
                                    <Button variant="ghost" size="icon" onClick={() => handleSave(match)}><Save className="h-4 w-4" /></Button>
                                 ) : (
-                                   <Button variant="ghost" size="icon" onClick={() => handleEdit(match)} disabled={match.p1.name === 'BYE' || match.p2.name === 'BYE' || match.p1.name.startsWith('Winner') || match.p2.name.startsWith('Winner')}><Pencil className="h-4 w-4" /></Button>
+                                   <Button variant="ghost" size="icon" onClick={() => handleEdit(match)} disabled={match.p1.name.startsWith('Winner') || match.p2.name.startsWith('Winner')}><Pencil className="h-4 w-4" /></Button>
                                 )}
                             </TableCell>
                         </TableRow>

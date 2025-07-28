@@ -25,40 +25,27 @@ export default function Home() {
     let numPlayers = players.length;
     const rounds: Round[] = [];
 
-    // Add BYEs to make the number of players a power of 2
-    if (numPlayers > 0 && (numPlayers & (numPlayers - 1)) !== 0) {
-      const nextPowerOf2 = Math.pow(2, Math.ceil(Math.log2(numPlayers)));
-      const byes = nextPowerOf2 - numPlayers;
-      for (let i = 0; i < byes; i++) {
-        // Distribute BYEs so they don't play each other if possible
-        // A simple way is to push them to the end
-        currentPlayers.push({ name: 'BYE', rank: 0 });
-      }
-      numPlayers = currentPlayers.length;
-    }
-
     if (numPlayers < 2) return [];
 
     let roundMatches: Match[] = [];
     for (let i = 0; i < numPlayers; i += 2) {
       const p1 = currentPlayers[i];
       const p2 = currentPlayers[i + 1];
-      const isBye = p1.name === 'BYE' || p2.name === 'BYE';
       roundMatches.push({
         id: `m-${rounds.length}-${roundMatches.length}`,
         p1: { ...p1, score: 0, sets: [] },
         p2: { ...p2, score: 0, sets: [] },
         title: `Match ${roundMatches.length + 1}`,
-        winner: isBye ? (p1.name === 'BYE' ? p2 : p1) : undefined,
+        winner: undefined,
         table: roundMatches.length + 1,
-        isFinished: isBye,
+        isFinished: false,
       });
     }
     rounds.push({ title: `Round 1`, matches: roundMatches });
 
     let previousRoundWinners = roundMatches.map(m => m.winner);
     
-    while (previousRoundWinners.length > 1) {
+    while (previousRoundWinners.filter(p => p !== undefined).length > 1 || (previousRoundWinners.length > 1 && previousRoundWinners.some(p=> p === undefined))) {
       const nextRoundMatches: Match[] = [];
       const nextRoundWinners: (Player | undefined)[] = [];
       for (let i = 0; i < previousRoundWinners.length; i += 2) {
@@ -68,16 +55,12 @@ export default function Home() {
         const match = {
           id: `m-${rounds.length}-${nextRoundMatches.length}`,
           p1: { name: p1?.name || `Winner Match ${Math.floor(i/2)*2 + 1}`, score: 0, sets: [], rank: p1?.rank },
-          p2: { name: p2?.name || (p2 === undefined ? 'BYE' : `Winner Match ${Math.floor(i/2)*2 + 2}`), score: 0, sets: [], rank: p2?.rank },
+          p2: { name: p2?.name || `Winner Match ${Math.floor(i/2)*2 + 2}`, score: 0, sets: [], rank: p2?.rank },
           title: `Match ${rounds.flatMap(r => r.matches).length + nextRoundMatches.length + 1}`,
-          winner: p2 === undefined ? p1 : (p1 === undefined ? p2 : (p1?.name === 'BYE' ? p2 : (p2?.name === 'BYE' ? p1 : undefined))),
+          winner: undefined,
           table: nextRoundMatches.length + 1,
-          isFinished: p1 === undefined || p2 === undefined || p1?.name === 'BYE' || p2?.name === 'BYE',
+          isFinished: false,
         };
-
-        if(match.winner && !match.isFinished) {
-           match.isFinished = true;
-        }
 
         nextRoundMatches.push(match);
         nextRoundWinners.push(match.winner);
@@ -319,7 +302,6 @@ export default function Home() {
                      if (match.p2.name.startsWith('Winner Group')) {
                        match.p2 = { ...(groupWinners[i*2 + 1] || {name: 'TBD'}), score: 0, sets: [] };
                     }
-                    // Check for BYEs
                     if(match.p2.name === 'TBD') {
                         match.winner = match.p1;
                         match.isFinished = true;
@@ -352,17 +334,7 @@ export default function Home() {
                     nextMatch.p2 = {...p2Winner, score: 0, sets: []};
                 }
 
-                // If one of the players for the next match is now defined, but the other is a BYE, the defined player wins
-                if (p1Winner && !p2Winner && (nextRound.matches[j].p2.name === 'BYE' || nextRound.matches[j].p2.name.startsWith('Winner'))) {
-                    nextRound.matches[j].winner = p1Winner;
-                    nextRound.matches[j].isFinished = true;
-                }
-                if (!p1Winner && p2Winner && (nextRound.matches[j].p1.name === 'BYE' || nextRound.matches[j].p1.name.startsWith('Winner'))) {
-                    nextRound.matches[j].winner = p2Winner;
-                    nextRound.matches[j].isFinished = true;
-                }
-
-                if (nextMatch.p1.name !== 'BYE' && nextMatch.p2.name !== 'BYE' && !nextMatch.p1.name.startsWith('Winner') && !nextMatch.p2.name.startsWith('Winner')) {
+                if (!nextMatch.p1.name.startsWith('Winner') && !nextMatch.p2.name.startsWith('Winner')) {
                     const p1s = Number(nextMatch.p1.score);
                     const p2s = Number(nextMatch.p2.score);
                     if(p1s > 0 || p2s > 0){

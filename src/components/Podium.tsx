@@ -32,8 +32,8 @@ export default function Podium({ tournament, rounds }: PodiumProps) {
 
     rounds.forEach(round => {
         round.matches.forEach(match => {
-            if (match.p1.name !== 'BYE') allPlayers.set(match.p1.name, match.p1);
-            if (match.p2.name !== 'BYE') allPlayers.set(match.p2.name, match.p2);
+            allPlayers.set(match.p1.name, match.p1);
+            allPlayers.set(match.p2.name, match.p2);
         });
     });
 
@@ -67,15 +67,15 @@ export default function Podium({ tournament, rounds }: PodiumProps) {
         let fourthPlace: Player | undefined;
 
         if (semiFinalRound && semiFinalRound.matches.length === 2) {
-            const losers = semiFinalRound.matches.map(m => (m.winner?.name === m.p1.name ? m.p2 : m.p1)).filter(p => p.name !== 'BYE');
+            const losers = semiFinalRound.matches.map(m => (m.winner?.name === m.p1.name ? m.p2 : m.p1));
             thirdPlace = losers[0]; // Simplified: just picking one
             fourthPlace = losers[1];
         }
 
-        if (winner && winner.name !== 'BYE') standings.push({ player: winner, position: 1, points: 36, prize: 123 });
-        if (runnerUp && runnerUp.name !== 'BYE') standings.push({ player: runnerUp, position: 2, points: 24, prize: 115 });
-        if (thirdPlace && thirdPlace.name !== 'BYE') standings.push({ player: thirdPlace, position: 3, points: 12, prize: 70 });
-        if (fourthPlace && fourthPlace.name !== 'BYE') standings.push({ player: fourthPlace, position: 4, points: 6, prize: 67 });
+        if (winner) standings.push({ player: winner, position: 1, points: 36, prize: 123 });
+        if (runnerUp) standings.push({ player: runnerUp, position: 2, points: 24, prize: 115 });
+        if (thirdPlace) standings.push({ player: thirdPlace, position: 3, points: 12, prize: 70 });
+        if (fourthPlace) standings.push({ player: fourthPlace, position: 4, points: 6, prize: 67 });
     }
 
     return standings;
