@@ -290,15 +290,15 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
 
             <Separator />
 
-            <h3 className="text-lg font-medium">Previsualización del Banner</h3>
+            <h3 className="text-lg font-medium">Previsualización de la Publicidad</h3>
             <div className="grid md:grid-cols-2 gap-6 items-start">
                <FormItem>
-                  <FormLabel>Imagen Principal del Banner (1080x1080)</FormLabel>
+                  <FormLabel>Imagen Principal de la Publicidad (1080x1080)</FormLabel>
                   <FormControl>
                     <Input type="file" accept="image/*" onChange={handleImageUpload} className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90" />
                   </FormControl>
                   <FormDescription>
-                    Adjunte una imagen cuadrada para el banner del torneo.
+                    Adjunte una imagen cuadrada para la publicidad del torneo.
                   </FormDescription>
                </FormItem>
                <div className="mt-2">
