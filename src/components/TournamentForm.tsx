@@ -180,8 +180,10 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
                     <Select
                       onValueChange={(value) => {
                         field.onChange(value);
-                        if (value !== 'Todos contra todos') {
-                          form.setValue('numeroRondas', '');
+                        if (value === 'Todos contra todos') {
+                           form.setValue('tipoSiembra', 'aleatorio');
+                        } else {
+                           form.setValue('tipoSiembra', 'aleatorio');
                         }
                       }}
                       defaultValue={field.value}
@@ -237,7 +239,7 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo de Siembra</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Elija orden de siembra" />
@@ -247,21 +249,6 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
                           {getSiembraOptions().map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {tipoEliminacion === 'Todos contra todos' && (
-                  <FormField
-                  control={form.control}
-                  name="numeroRondas"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Número de Rondas</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
                     </FormItem>
                   )}
                 />
