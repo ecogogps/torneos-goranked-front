@@ -35,3 +35,28 @@ export const TournamentSchema = z.object({
 });
 
 export type Tournament = z.infer<typeof TournamentSchema>;
+
+export interface Player {
+  name: string;
+  rank?: number;
+}
+
+export interface PlayerResult extends Player {
+    score: number;
+    sets: number[];
+}
+
+export interface Match {
+    id: string;
+    p1: PlayerResult;
+    p2: PlayerResult;
+    title: string;
+    winner?: Player;
+    table: number;
+    isFinished: boolean;
+}
+
+export interface Round {
+    title: string;
+    matches: Match[];
+}
