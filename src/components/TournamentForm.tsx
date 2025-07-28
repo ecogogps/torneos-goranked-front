@@ -94,7 +94,8 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
     if (tipoEliminacion === 'Todos contra todos') {
       return TIPO_SIEMBRA_OPTIONS.filter(o => o.value === 'aleatorio' || o.value === 'secuencial');
     }
-    return TIPO_SIEMBRA_OPTIONS.filter(o => o.value !== 'tradicional');
+    // For "Eliminacion Directa" and "Por Grupos"
+    return TIPO_SIEMBRA_OPTIONS.filter(o => o.value === 'aleatorio' || o.value === 'secuencial' || o.value === 'tradicional');
   }
 
   function handleSendInvitations() {
@@ -198,7 +199,8 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
                 )}
               />
               
-              <FormField
+              { (tipoEliminacion === 'Eliminacion Directa' || tipoEliminacion === 'Por Grupos' || tipoEliminacion === 'Todos contra todos') && (
+                <FormField
                   control={form.control}
                   name="numeroParticipantes"
                   render={({ field }) => (
@@ -222,6 +224,7 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
                     </FormItem>
                   )}
                 />
+              )}
               
               <FormField
                 control={form.control}

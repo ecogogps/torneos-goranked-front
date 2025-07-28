@@ -10,7 +10,6 @@ export const TIPO_SIEMBRA_OPTIONS = [
   { value: "aleatorio", label: "Aleatorio" },
   { value: "tradicional", label: "Tradicional" },
   { value: "secuencial", label: "Secuencial" },
-  { value: "culebrita", label: "Culebrita (Snake)" },
 ];
 
 export const TIPO_ELIMINACION_OPTIONS = [

@@ -11,7 +11,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const SeedingAlgorithmSchema = z.enum(['random', 'traditional', 'snake', 'sequential']);
+const SeedingAlgorithmSchema = z.enum(['aleatorio', 'tradicional', 'secuencial']);
 
 const AiAssistedPlayerSeedingInputSchema = z.object({
   algorithm: SeedingAlgorithmSchema.describe('The algorithm to use for seeding players.'),
@@ -61,16 +61,16 @@ const aiAssistedPlayerSeedingFlow = ai.defineFlow(
       // Create a map for quick name-to-rank lookup
       const rankMap = new Map(rankingData.map(p => [p.name, p.ranking]));
       // Sort playerNames array based on the ranking data
-      return [...playerNames].sort((a, b) => (rankMap.get(b) ?? 0) - (rankMap.get(a) ?? 0));
+      return [...playerNames].sort((a, b) => (rankMap.get(a) ?? Infinity) - (rankMap.get(b) ?? Infinity));
     };
 
     switch (algorithm) {
-      case 'random':
+      case 'aleatorio':
         seededPlayers = [...playerNames].sort(() => Math.random() - 0.5);
         explanation = 'Los jugadores se han ordenado de forma aleatoria.';
         break;
 
-      case 'sequential':
+      case 'secuencial':
         const rankedPlayersSeq = getRankedPlayers();
         if (rankedPlayersSeq) {
             seededPlayers = rankedPlayersSeq;
@@ -81,7 +81,7 @@ const aiAssistedPlayerSeedingFlow = ai.defineFlow(
         }
         break;
         
-      case 'traditional':
+      case 'tradicional':
         const rankedPlayersTrad = getRankedPlayers();
         if (rankedPlayersTrad) {
           const n = rankedPlayersTrad.length;
@@ -100,24 +100,6 @@ const aiAssistedPlayerSeedingFlow = ai.defineFlow(
           // Fallback to random if no ranking data
           seededPlayers = [...playerNames].sort(() => Math.random() - 0.5);
           explanation = 'No hay datos de ranking, se ha realizado una siembra aleatoria.';
-        }
-        break;
-
-      case 'snake':
-        const rankedPlayersSnake = getRankedPlayers();
-        if (rankedPlayersSnake) {
-            const n = rankedPlayersSnake.length;
-            const groups: string[][] = Array.from({ length: Math.ceil(n / 2) }, () => []);
-            for (let i = 0; i < n; i++) {
-                const groupIndex = i % 2 === 0 ? Math.floor(i / 2) : Math.floor((n - 1 - i) / 2);
-                groups[groupIndex].push(rankedPlayersSnake[i]);
-            }
-            seededPlayers = groups.flat();
-            explanation = 'Siembra de serpiente (culebrita): agrupa a jugadores con rankings cercanos.';
-        } else {
-            // Fallback to random if no ranking data
-            seededPlayers = [...playerNames].sort(() => Math.random() - 0.5);
-            explanation = 'No hay datos de ranking, se ha realizado una siembra aleatoria.';
         }
         break;
         
