@@ -55,21 +55,32 @@ export default function MatchTracker({ tournament }: MatchTrackerProps) {
   const generateRoundRobinMatches = () => {
     const numPlayers = players.length;
     if (numPlayers < 2) return [];
-    
-    const matches: any[] = [];
-    const rounds = Number(tournament.numeroRondas) || 1;
 
-    for (let r = 0; r < rounds; r++) {
-      for (let i = 0; i < numPlayers; i++) {
+    let allMatches: any[] = [];
+    for (let i = 0; i < numPlayers; i++) {
         for (let j = i + 1; j < numPlayers; j++) {
-           matches.push({
-             p1: { name: players[i].name, rank: players[i].rank, score: 0, sets: [] },
-             p2: { name: players[j].name, rank: players[j].rank, score: 0, sets: [] },
-           });
+            allMatches.push({
+                p1: { name: players[i].name, rank: players[i].rank, score: 0, sets: [] },
+                p2: { name: players[j].name, rank: players[j].rank, score: 0, sets: [] },
+            });
         }
-      }
     }
-    return matches;
+    
+    // Shuffle matches for randomness
+    for (let i = allMatches.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allMatches[i], allMatches[j]] = [allMatches[j], allMatches[i]];
+    }
+
+    const rounds = Number(tournament.numeroRondas) || 1;
+    if (rounds > 1) {
+        const singleRoundMatches = [...allMatches];
+        for(let r = 1; r < rounds; r++) {
+            allMatches = allMatches.concat(singleRoundMatches);
+        }
+    }
+    
+    return allMatches;
   }
 
   const renderBrackets = () => {
