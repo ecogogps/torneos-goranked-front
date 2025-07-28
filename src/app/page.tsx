@@ -8,7 +8,6 @@ import Podium from "@/components/Podium";
 import type { Tournament, Match, Round, Player } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { TIPO_SIEMBRA_OPTIONS } from "@/lib/constants";
 import { aiAssistedPlayerSeeding, AiAssistedPlayerSeedingInput } from "@/ai/flows/ai-seeding";
 
 type View = "form" | "banner" | "match" | "podium";
@@ -22,10 +21,12 @@ export default function Home() {
 
 
   const generateBracketRounds = (players: Player[]): Round[] => {
+    let currentPlayers = [...players];
+    
+    // Ensure players length is a power of 2 for bracket generation
     const numPlayers = players.length;
     let rounds: Round[] = [];
-    let currentPlayers = [...players];
-
+  
     // Create initial round
     let roundMatches: Match[] = [];
     if (numPlayers > 0) {
@@ -83,6 +84,51 @@ export default function Home() {
     
     return rounds;
   }
+
+  const generateGroupStageAndBracket = (players: Player[]): Round[] => {
+    const numPlayers = players.length;
+    if (numPlayers < 4) return generateBracketRounds(players); // Not enough for groups
+
+    const groups: Player[][] = [];
+    // Traditional seeding creates pairs for initial matches
+    for (let i = 0; i < numPlayers; i += 2) {
+      groups.push([players[i], players[i+1]]);
+    }
+
+    const groupMatches: Match[] = [];
+    groups.forEach((group, index) => {
+        for (let i = 0; i < group.length; i++) {
+            for (let j = i + 1; j < group.length; j++) {
+                groupMatches.push({
+                    id: `m-group-${groupMatches.length}`,
+                    p1: { ...group[i], score: 0, sets: [] },
+                    p2: { ...group[j], score: 0, sets: [] },
+                    title: `Grupo ${index + 1} - Match ${groupMatches.length + 1}`,
+                    winner: undefined,
+                    table: groupMatches.length + 1,
+                    isFinished: false,
+                });
+            }
+        }
+    });
+
+    const groupRound: Round = { title: "Fase de Grupos", matches: groupMatches };
+    
+    // Create placeholders for the knockout stage
+    const numGroups = groups.length;
+    const knockoutPlayers: Player[] = Array.from({ length: numGroups }, (_, i) => ({
+      name: `Winner Group ${i + 1}`,
+      rank: 0,
+    }));
+    
+    const knockoutRounds = generateBracketRounds(knockoutPlayers);
+    knockoutRounds.forEach(round => {
+      round.title = `Fase Final - ${round.title}`
+    })
+
+    return [groupRound, ...knockoutRounds];
+  };
+
   
   const generateRoundRobinMatches = (players: Player[], roundsCount: number, isRandom: boolean): Match[] => {
     const numPlayers = players.length;
@@ -91,6 +137,8 @@ export default function Home() {
     let allMatches: Match[] = [];
     let playerList = [...players];
     
+    // For sequential, we don't shuffle the player list.
+    // For random, we do.
     if (isRandom) {
       playerList.sort(() => Math.random() - 0.5);
     }
@@ -109,6 +157,7 @@ export default function Home() {
       }
     }
     
+    // For random, we shuffle the generated matches as well.
     if (isRandom) {
        allMatches.sort(() => Math.random() - 0.5);
     }
@@ -157,7 +206,10 @@ export default function Home() {
         if (data.tipoEliminacion === 'Todos contra todos') {
             const matches = generateRoundRobinMatches(finalSeededPlayers, Number(data.numeroRondas) || 1, data.tipoSiembra === 'aleatorio');
             setRounds([{ title: 'Todos contra todos', matches }]);
-        } else {
+        } else if (data.tipoEliminacion === 'Por Grupos') {
+            const newRounds = generateGroupStageAndBracket(finalSeededPlayers);
+            setRounds(newRounds);
+        } else { // Eliminacion Directa
             const newRounds = generateBracketRounds(finalSeededPlayers);
             setRounds(newRounds);
         }
@@ -170,7 +222,10 @@ export default function Home() {
          if (data.tipoEliminacion === 'Todos contra todos') {
             const matches = generateRoundRobinMatches(initialPlayers, Number(data.numeroRondas) || 1, data.tipoSiembra === 'aleatorio');
             setRounds([{ title: 'Todos contra todos', matches }]);
-        } else {
+        } else if (data.tipoEliminacion === 'Por Grupos') {
+            const newRounds = generateGroupStageAndBracket(initialPlayers);
+            setRounds(newRounds);
+        } else { // Eliminacion Directa
             const newRounds = generateBracketRounds(initialPlayers);
             setRounds(newRounds);
         }
@@ -187,55 +242,117 @@ export default function Home() {
   };
   
   const handleUpdateMatch = (updatedMatch: Match) => {
-      const newRounds = [...rounds];
+    const newRounds = [...rounds];
+    let roundOfMatch: Round | undefined;
+    let matchIndexInRound = -1;
 
-      // Update the match in its round
-      for (const round of newRounds) {
+    // Find and update the match
+    for (const round of newRounds) {
         const matchIndex = round.matches.findIndex(m => m.id === updatedMatch.id);
         if (matchIndex !== -1) {
-          const p1Score = Number(updatedMatch.p1.score);
-          const p2Score = Number(updatedMatch.p2.score);
-          const winner = p1Score > p2Score ? updatedMatch.p1 : (p2Score > p1Score ? updatedMatch.p2 : undefined);
-          round.matches[matchIndex] = { ...updatedMatch, winner, isFinished: winner !== undefined };
-          break;
+            const p1Score = Number(updatedMatch.p1.score);
+            const p2Score = Number(updatedMatch.p2.score);
+            const winner = p1Score > p2Score ? updatedMatch.p1 : (p2Score > p1Score ? updatedMatch.p2 : undefined);
+            
+            round.matches[matchIndex] = { ...updatedMatch, winner, isFinished: winner !== undefined };
+            roundOfMatch = round;
+            matchIndexInRound = matchIndex;
+            break;
         }
-      }
-      
-      // Propagate winners to subsequent rounds for bracket-based tournaments
-      if (tournamentData?.tipoEliminacion !== 'Todos contra todos') {
-        for (let i = 0; i < newRounds.length - 1; i++) {
-          const currentRound = newRounds[i];
-          const nextRound = newRounds[i+1];
+    }
 
-          // Re-evaluate all matches in the next round
-          for (const nextMatch of nextRound.matches) {
-              const p1SourceMatchId = parseInt(nextMatch.id.split('-')[2], 10);
-              const p2SourceMatchId = p1SourceMatchId + 1;
+    if (tournamentData?.tipoEliminacion === 'Por Grupos' && roundOfMatch?.title === 'Fase de Grupos') {
+        const allGroupMatchesFinished = newRounds[0].matches.every(m => m.isFinished);
+        
+        if (allGroupMatchesFinished) {
+            const groupWinners: Player[] = [];
+            const numPlayers = seededPlayers.length;
+            const groups: Player[][] = [];
+             for (let i = 0; i < numPlayers; i += 2) {
+                groups.push([seededPlayers[i], seededPlayers[i+1]]);
+            }
 
-              const p1SourceMatch = currentRound.matches.find(m => m.title === `Match ${Math.floor(parseInt(m.id.split('-')[2]))*2 + 1}`);
-              const p2SourceMatch = currentRound.matches.find(m => m.title === `Match ${Math.floor(parseInt(m.id.split('-')[2]))*2 + 2}`);
-              
-              const p1Winner = currentRound.matches[Math.floor((parseInt(nextMatch.id.split('-')[2]))/2)*2]?.winner;
-              const p2Winner = currentRound.matches[Math.floor((parseInt(nextMatch.id.split('-')[2]))/2)*2+1]?.winner;
+            groups.forEach((group, index) => {
+                const groupPlayerNames = group.map(p => p.name);
+                const matchesInGroup = newRounds[0].matches.filter(m => 
+                    groupPlayerNames.includes(m.p1.name) && groupPlayerNames.includes(m.p2.name)
+                );
 
-              if(p1Winner) {
-                const p1PlaceholderName = `Winner of ${currentRound.matches.find(m => m.winner?.name === p1Winner.name)?.title}`
-                if (nextMatch.p1.name.startsWith('Winner')) {
-                  nextMatch.p1 = {...p1Winner, score: 0, sets: []};
+                const playerWins: { [key: string]: number } = {};
+                groupPlayerNames.forEach(name => { playerWins[name] = 0; });
+                
+                matchesInGroup.forEach(m => {
+                    if (m.winner) {
+                        playerWins[m.winner.name]++;
+                    }
+                });
+
+                let winnerName = Object.keys(playerWins).reduce((a, b) => playerWins[a] > playerWins[b] ? a : b);
+                const winnerPlayer = seededPlayers.find(p => p.name === winnerName) || { name: winnerName, rank: 0 };
+                groupWinners.push(winnerPlayer);
+            });
+
+            // Populate the first knockout round
+            if (newRounds.length > 1) {
+                const firstKnockoutRound = newRounds[1];
+                for (let i = 0; i < firstKnockoutRound.matches.length; i++) {
+                    const match = firstKnockoutRound.matches[i];
+                    if (match.p1.name.startsWith('Winner Group')) {
+                       match.p1 = { ...(groupWinners[i*2] || {name: 'TBD'}), score: 0, sets: [] };
+                    }
+                     if (match.p2.name.startsWith('Winner Group')) {
+                       match.p2 = { ...(groupWinners[i*2 + 1] || {name: 'TBD'}), score: 0, sets: [] };
+                    }
+                    // Check for BYEs
+                    if(match.p2.name === 'TBD') {
+                        match.winner = match.p1;
+                        match.isFinished = true;
+                    }
                 }
-              }
-               if(p2Winner) {
-                 const p2PlaceholderName = `Winner of ${currentRound.matches.find(m => m.winner?.name === p2Winner.name)?.title}`
-                 if (nextMatch.p2.name.startsWith('Winner')) {
-                    nextMatch.p2 = {...p2Winner, score: 0, sets: []};
-                 }
-               }
-          }
+            }
         }
-      }
+    }
 
-      setRounds(newRounds);
-  };
+    // Propagate winners for any bracket-based tournament (Directa or Final phase of Por Grupos)
+    if (tournamentData?.tipoEliminacion !== 'Todos contra todos') {
+        for (let i = 0; i < newRounds.length - 1; i++) {
+            const currentRound = newRounds[i];
+            const nextRound = newRounds[i+1];
+
+            if(currentRound.title.includes('Fase de Grupos')) continue;
+
+            for (const nextMatch of nextRound.matches) {
+                const p1SourceMatchIndex = Math.floor(parseInt(nextMatch.id.split('-')[2], 10) / 2) * 2;
+                const p2SourceMatchIndex = p1SourceMatchIndex + 1;
+                
+                const p1Winner = currentRound.matches.find(m => m.table === p1SourceMatchIndex + 1)?.winner;
+                const p2Winner = currentRound.matches.find(m => m.table === p2SourceMatchIndex + 1)?.winner;
+
+                if (p1Winner && nextMatch.p1.name.startsWith('Winner')) {
+                    nextMatch.p1 = {...p1Winner, score: 0, sets: []};
+                }
+                if (p2Winner && nextMatch.p2.name.startsWith('Winner')) {
+                    nextMatch.p2 = {...p2Winner, score: 0, sets: []};
+                }
+
+                if (nextMatch.p1.name !== 'BYE' && nextMatch.p2.name !== 'BYE' && !nextMatch.p1.name.startsWith('Winner') && !nextMatch.p2.name.startsWith('Winner')) {
+                    const p1s = Number(nextMatch.p1.score);
+                    const p2s = Number(nextMatch.p2.score);
+                    if(p1s > 0 || p2s > 0){
+                       nextMatch.winner = p1s > p2s ? nextMatch.p1 : nextMatch.p2;
+                       nextMatch.isFinished = true;
+                    } else {
+                       nextMatch.winner = undefined;
+                       nextMatch.isFinished = false;
+                    }
+                }
+            }
+        }
+    }
+
+    setRounds(newRounds);
+};
+
   
   const renderView = () => {
     if (isLoading) {

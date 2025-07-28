@@ -33,7 +33,7 @@ export default function MatchTracker({ tournament, rounds, onUpdateMatch, seeded
 
   const renderBrackets = () => {
     if (isRoundRobin) {
-       const allMatches = rounds[0]?.matches || [];
+       const allMatches = rounds.flatMap(r => r.matches);
        return <RoundRobinView matches={allMatches} onUpdateMatch={onUpdateMatch} />;
     }
 
@@ -51,7 +51,7 @@ export default function MatchTracker({ tournament, rounds, onUpdateMatch, seeded
             <TabsContent value="cronograma" className="overflow-x-auto py-4">
               <div className="flex gap-4">
                 {rounds.map((round, roundIndex) => (
-                  <div key={roundIndex} className="flex flex-col items-center flex-shrink-0 w-64">
+                  <div key={round.title} className="flex flex-col items-center flex-shrink-0 w-64">
                      <h3 className="text-xl font-bold mb-4">{round.title}</h3>
                      <div className="flex flex-col gap-8 w-full">
                         {round.matches.map((match) => (
@@ -82,7 +82,7 @@ export default function MatchTracker({ tournament, rounds, onUpdateMatch, seeded
         </CardHeader>
       </Card>
       
-      {isGroupStage && <GroupStage seededPlayers={seededPlayers} />}
+      {isGroupStage && tournament.tipoSiembra === 'tradicional' && <GroupStageView seededPlayers={seededPlayers} />}
 
       {renderBrackets()}
 
@@ -116,14 +116,17 @@ const BracketMatch = ({ match }: { match: Match }) => {
   )
 }
 
-const GroupStage = ({ seededPlayers }: { seededPlayers: Player[] }) => {
+const GroupStageView = ({ seededPlayers }: { seededPlayers: Player[] }) => {
     const numPlayers = seededPlayers.length;
-    const numGroups = numPlayers / 2;
-    const groups: Player[][] = Array.from({ length: numGroups }, () => []);
+    if (numPlayers === 0) return null;
 
-    for (let i = 0; i < numPlayers / 2; i++) {
-        groups[i].push(seededPlayers[i]);
-        groups[i].push(seededPlayers[numPlayers - 1 - i]);
+    const groups: Player[][] = [];
+    for (let i = 0; i < numPlayers; i += 2) {
+        const group: Player[] = [seededPlayers[i]];
+        if (seededPlayers[i+1]) {
+            group.push(seededPlayers[i+1]);
+        }
+        groups.push(group);
     }
 
     return (
@@ -137,7 +140,7 @@ const GroupStage = ({ seededPlayers }: { seededPlayers: Player[] }) => {
                     <Card key={index}>
                         <CardHeader><CardTitle>GROUP {index + 1}</CardTitle></CardHeader>
                         <CardContent className="space-y-2">
-                            {group.map(player => <p key={player.name}>{player.name}</p>)}
+                            {group.map(player => <p key={player.name}>{player.name} {player.rank ? `(${player.rank})` : ''}</p>)}
                         </CardContent>
                     </Card>
                 ))}
@@ -229,8 +232,8 @@ const ResultsTableView = ({ rounds, onUpdateMatch }: { rounds: Round[], onUpdate
   
   return (
     <div className="space-y-4">
-      {rounds.map((round, roundIndex) => (
-        <div key={roundIndex}>
+      {rounds.map((round) => (
+        <div key={round.title}>
             <h3 className="text-lg font-semibold my-2 p-2 bg-muted rounded-md">{round.title} - TORNEO #000236</h3>
             <Table>
                 <TableHeader>
@@ -251,7 +254,7 @@ const ResultsTableView = ({ rounds, onUpdateMatch }: { rounds: Round[], onUpdate
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => 
+                                        {Array.from({ length: 16 }, (_, i) => i + 1).map(i => 
                                           <SelectItem key={i} value={`Mesa #${i}`}>Mesa #{i}</SelectItem>
                                         )}
                                     </SelectContent>
@@ -290,7 +293,7 @@ const ResultsTableView = ({ rounds, onUpdateMatch }: { rounds: Round[], onUpdate
                                 {editingMatchId === match.id ? (
                                    <Button variant="ghost" size="icon" onClick={() => handleSave(match)}><Save className="h-4 w-4" /></Button>
                                 ) : (
-                                   <Button variant="ghost" size="icon" onClick={() => handleEdit(match)} disabled={match.p1.name === 'BYE' || match.p2.name === 'BYE'}><Pencil className="h-4 w-4" /></Button>
+                                   <Button variant="ghost" size="icon" onClick={() => handleEdit(match)} disabled={match.p1.name === 'BYE' || match.p2.name === 'BYE' || match.p1.name.startsWith('Winner') || match.p2.name.startsWith('Winner')}><Pencil className="h-4 w-4" /></Button>
                                 )}
                             </TableCell>
                         </TableRow>
