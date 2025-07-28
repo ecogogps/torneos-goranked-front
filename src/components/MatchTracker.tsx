@@ -176,10 +176,18 @@ const RoundRobinView = ({ matches, onUpdateMatch }: { matches: Match[], onUpdate
     });
     setEditingMatchId(null);
   };
+  
+  const sortedMatches = React.useMemo(() => {
+    return [...matches].sort((a, b) => {
+        const numA = parseInt(a.title.replace(/[^0-9]/g, ''), 10);
+        const numB = parseInt(b.title.replace(/[^0-9]/g, ''), 10);
+        return numA - numB;
+    });
+  }, [matches]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
-      {matches.map((match) => (
+      {sortedMatches.map((match) => (
         <Card key={match.id} className={cn({'border-green-400': match.isFinished})}>
            <CardHeader className="p-4 flex-row items-center justify-between">
               <p className="font-semibold">{match.title}</p>
