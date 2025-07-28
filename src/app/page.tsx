@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { aiAssistedPlayerSeeding, AiAssistedPlayerSeedingInput } from "@/ai/flows/ai-seeding";
 
-type View = "form" | "banner" | "match" | "podium";
+type View = "form" | "match" | "podium";
 
 export default function Home() {
   const [view, setView] = useState<View>("form");
@@ -213,7 +213,7 @@ export default function Home() {
             setRounds(newRounds);
         }
         
-        setView("banner");
+        setView("match");
     } catch(error) {
         console.error("Failed to seed players:", error);
         // Fallback to simple list if AI seeding fails
@@ -228,7 +228,7 @@ export default function Home() {
             const newRounds = generateBracketRounds(initialPlayers);
             setRounds(newRounds);
         }
-        setView("banner");
+        setView("match");
     } finally {
         setIsLoading(false);
     }
@@ -302,7 +302,7 @@ export default function Home() {
                      if (match.p2.name.startsWith('Winner Group')) {
                        match.p2 = { ...(groupWinners[i*2 + 1] || {name: 'TBD'}), score: 0, sets: [] };
                     }
-                    if(match.p2.name === 'TBD') {
+                    if(match.p2.name === 'TBD' && !match.p1.name.startsWith('Winner')) {
                         match.winner = match.p1;
                         match.isFinished = true;
                     }
@@ -365,8 +365,6 @@ export default function Home() {
     switch (view) {
       case "form":
         return <TournamentForm onSubmit={handleCreateTournament} />;
-      case "banner":
-        return <TournamentBanner tournament={tournamentData!} />;
       case "match":
         return <MatchTracker 
                   tournament={tournamentData!} 
@@ -384,7 +382,7 @@ export default function Home() {
   const NavButtons = () => {
     if (view === "form" || isLoading) return null;
     
-    const viewOrder: View[] = ["banner", "match", "podium"];
+    const viewOrder: View[] = ["match", "podium"];
     const currentIndex = viewOrder.indexOf(view);
 
     return (
