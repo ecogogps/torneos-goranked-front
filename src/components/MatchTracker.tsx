@@ -46,7 +46,7 @@ export default function MatchTracker({ tournament, rounds, onUpdateMatch, seeded
                   <TabsTrigger value="mesa">Mesa</TabsTrigger>
                 </TabsList>
                 <TabsContent value="cronograma">
-                   <RoundRobinView matches={allMatches} onUpdateMatch={onUpdateMatch} />
+                   <RoundRobinView matches={allMatches} />
                 </TabsContent>
                 <TabsContent value="mesa">
                   <ResultsTableView rounds={rounds} onUpdateMatch={onUpdateMatch} tournamentCode={tournament.codigoTorneo} />
@@ -159,24 +159,7 @@ const GroupStageView = ({ seededPlayers }: { seededPlayers: Player[] }) => {
     );
 }
 
-const RoundRobinView = ({ matches, onUpdateMatch }: { matches: Match[], onUpdateMatch: (match: Match) => void }) => {
-  const [editingMatchId, setEditingMatchId] = React.useState<string | null>(null);
-  const [currentScores, setCurrentScores] = React.useState<{ p1: number, p2: number }>({ p1: 0, p2: 0 });
-
-  const handleEdit = (match: Match) => {
-    setEditingMatchId(match.id);
-    setCurrentScores({ p1: match.p1.score, p2: match.p2.score });
-  };
-
-  const handleSave = (match: Match) => {
-    onUpdateMatch({
-      ...match,
-      p1: { ...match.p1, score: currentScores.p1 },
-      p2: { ...match.p2, score: currentScores.p2 },
-    });
-    setEditingMatchId(null);
-  };
-  
+const RoundRobinView = ({ matches }: { matches: Match[] }) => {
   const sortedMatches = React.useMemo(() => {
     return [...matches].sort((a, b) => {
         const numA = parseInt(a.title.replace(/[^0-9]/g, ''), 10);
@@ -191,30 +174,15 @@ const RoundRobinView = ({ matches, onUpdateMatch }: { matches: Match[], onUpdate
         <Card key={match.id} className={cn({'border-green-400': match.isFinished})}>
            <CardHeader className="p-4 flex-row items-center justify-between">
               <p className="font-semibold">{match.title}</p>
-              <div>
-                {editingMatchId === match.id ? (
-                   <Button variant="ghost" size="icon" onClick={() => handleSave(match)}><Save className="h-4 w-4" /></Button>
-                ) : (
-                   <Button variant="ghost" size="icon" onClick={() => handleEdit(match)}><Pencil className="h-4 w-4" /></Button>
-                )}
-              </div>
            </CardHeader>
            <CardContent className="p-4 pt-0 space-y-2">
              <div className="flex justify-between items-center">
                <span className={cn({'font-bold': match.winner?.name === match.p1.name})}>{match.p1.name} {match.p1.rank ? `(${match.p1.rank})` : ''}</span>
-               {editingMatchId === match.id ? (
-                  <Input type="number" className="w-16 h-8" value={currentScores.p1} onChange={(e) => setCurrentScores(s => ({ ...s, p1: Number(e.target.value) }))} />
-               ) : (
-                  <Badge variant={match.winner?.name === match.p1.name ? "default" : "secondary"}>{match.p1.score}</Badge>
-               )}
+                <Badge variant={match.winner?.name === match.p1.name ? "default" : "secondary"}>{match.p1.score}</Badge>
              </div>
               <div className="flex justify-between items-center">
                <span className={cn({'font-bold': match.winner?.name === match.p2.name})}>{match.p2.name} {match.p2.rank ? `(${match.p2.rank})` : ''}</span>
-                {editingMatchId === match.id ? (
-                  <Input type="number" className="w-16 h-8" value={currentScores.p2} onChange={(e) => setCurrentScores(s => ({ ...s, p2: Number(e.target.value) }))} />
-               ) : (
-                  <Badge variant={match.winner?.name === match.p2.name ? "default" : "secondary"}>{match.p2.score}</Badge>
-               )}
+                <Badge variant={match.winner?.name === match.p2.name ? "default" : "secondary"}>{match.p2.score}</Badge>
              </div>
            </CardContent>
         </Card>
