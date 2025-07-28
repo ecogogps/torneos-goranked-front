@@ -17,6 +17,7 @@ import {
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Pencil, Save, Users, Swords, Info } from "lucide-react";
+import * as React from "react";
 
 interface MatchTrackerProps {
   tournament: Tournament;
@@ -116,8 +117,8 @@ const Round = ({ title, matches, isFinal = false }: { title: string, matches: an
         </TableHeader>
         <TableBody>
           {matches.map((match, i) => (
-            <>
-              <TableRow key={i}>
+            <React.Fragment key={i}>
+              <TableRow>
                 <TableCell className="font-medium">{isFinal ? 'Final Match 01' : `Match ${i + 1}`}</TableCell>
                 <TableCell>
                   <div className="flex items-center justify-between">
@@ -153,7 +154,7 @@ const Round = ({ title, matches, isFinal = false }: { title: string, matches: an
                   </div>
                 </TableCell>
               </TableRow>
-            </>
+            </React.Fragment>
           ))}
         </TableBody>
       </Table>
