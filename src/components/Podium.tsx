@@ -103,9 +103,6 @@ export default function Podium({ tournament, rounds }: PodiumProps) {
               </p>
             )}
           </div>
-          <Button size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
-            ACTUALIZAR RANKING DEL TORNEO
-          </Button>
         </CardContent>
       </Card>
 
