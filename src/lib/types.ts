@@ -15,6 +15,8 @@ export const TournamentSchema = z.object({
   tipoPartidos: z.string(),
   tipoSiembra: z.string(),
   tipoEliminacion: z.string(),
+  numeroParticipantes: z.string().optional(),
+  numeroRondas: z.string().optional(),
   rankingDesde: z.string().optional(),
   rankingHasta: z.string().optional(),
   edadDesde: z.string().optional(),

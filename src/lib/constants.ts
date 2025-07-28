@@ -21,3 +21,5 @@ export const TIPO_ELIMINACION_OPTIONS = [
 ];
 
 export const SEXO_OPTIONS = ['masculino', 'femenino', 'Mixto'];
+
+export const NUMERO_PARTICIPANTES_OPTIONS = [4, 8, 16, 32];
