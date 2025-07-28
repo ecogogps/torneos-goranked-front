@@ -69,7 +69,7 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
       tipoSiembra: "aleatorio",
       tipoEliminacion: "Por Grupos",
       numeroParticipantes: "8",
-      numeroRondas: "",
+      numeroRondas: "1",
       rankingDesde: "U800",
       rankingHasta: "",
       edadDesde: "",
@@ -94,10 +94,7 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
     if (tipoEliminacion === 'Todos contra todos') {
       return TIPO_SIEMBRA_OPTIONS.filter(o => o.value === 'aleatorio' || o.value === 'secuencial');
     }
-    if (tipoEliminacion === 'Eliminacion Directa' || tipoEliminacion === 'Por Grupos') {
-      return TIPO_SIEMBRA_OPTIONS.filter(o => o.value === 'aleatorio' || o.value === 'culebrita' || o.value === 'secuencial');
-    }
-    return TIPO_SIEMBRA_OPTIONS;
+    return TIPO_SIEMBRA_OPTIONS.filter(o => o.value !== 'tradicional');
   }
 
   function handleSendInvitations() {
@@ -180,11 +177,7 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
                     <Select
                       onValueChange={(value) => {
                         field.onChange(value);
-                        if (value === 'Todos contra todos') {
-                           form.setValue('tipoSiembra', 'aleatorio');
-                        } else {
-                           form.setValue('tipoSiembra', 'aleatorio');
-                        }
+                        form.setValue('tipoSiembra', 'aleatorio');
                       }}
                       defaultValue={field.value}
                     >
@@ -204,9 +197,8 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
                   </FormItem>
                 )}
               />
-
-              {(tipoEliminacion === 'Eliminacion Directa' || tipoEliminacion === 'Por Grupos' || tipoEliminacion === 'Todos contra todos') && (
-                <FormField
+              
+              <FormField
                   control={form.control}
                   name="numeroParticipantes"
                   render={({ field }) => (
@@ -230,25 +222,37 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
                     </FormItem>
                   )}
                 />
-              )}
               
-              {(tipoEliminacion === 'Eliminacion Directa' || tipoEliminacion === 'Por Grupos' || tipoEliminacion === 'Todos contra todos') && (
+              <FormField
+                control={form.control}
+                name="tipoSiembra"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Siembra</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Elija orden de siembra" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {getSiembraOptions().map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+
+              {tipoEliminacion === 'Todos contra todos' && (
                 <FormField
                   control={form.control}
-                  name="tipoSiembra"
+                  name="numeroRondas"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tipo de Siembra</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Elija orden de siembra" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {getSiembraOptions().map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Número de Rondas</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} min={1}/>
+                      </FormControl>
                     </FormItem>
                   )}
                 />

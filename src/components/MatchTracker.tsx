@@ -18,6 +18,7 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Pencil, Save, Users, Swords, Info } from "lucide-react";
 import * as React from "react";
+import { TIPO_SIEMBRA_OPTIONS } from "@/lib/constants";
 
 interface MatchTrackerProps {
   tournament: Tournament;
@@ -41,6 +42,67 @@ const renderSetTable = (sets: number[]) => (
 
 export default function MatchTracker({ tournament }: MatchTrackerProps) {
   const isGroupStage = tournament.tipoEliminacion === 'Por Grupos';
+  const isRoundRobin = tournament.tipoEliminacion === 'Todos contra todos';
+  const isDirectElimination = tournament.tipoEliminacion === 'Eliminacion Directa';
+
+  // Dummy players for demonstration
+  const players = Array.from({ length: Number(tournament.numeroParticipantes) || 8 }, (_, i) => ({
+    name: `Player ${i + 1}`,
+    rank: Math.floor(1500 + Math.random() * 500)
+  }));
+
+
+  const generateRoundRobinMatches = () => {
+    const numPlayers = players.length;
+    if (numPlayers < 2) return [];
+    
+    const matches: any[] = [];
+    const rounds = Number(tournament.numeroRondas) || 1;
+
+    for (let r = 0; r < rounds; r++) {
+      for (let i = 0; i < numPlayers; i++) {
+        for (let j = i + 1; j < numPlayers; j++) {
+           matches.push({
+             p1: { name: players[i].name, rank: players[i].rank, score: 0, sets: [] },
+             p2: { name: players[j].name, rank: players[j].rank, score: 0, sets: [] },
+           });
+        }
+      }
+    }
+    return matches;
+  }
+
+  const renderBrackets = () => {
+    if (isRoundRobin) {
+       const allMatches = generateRoundRobinMatches();
+       return <Round title={`Partidos (Ronda Única)`} matches={allMatches} />
+    }
+
+    if (isDirectElimination || isGroupStage) {
+       // Logic for knockout stages
+       const round1Matches = [];
+       for (let i = 0; i < players.length; i += 2) {
+         if (players[i+1]) {
+           round1Matches.push({ p1: players[i], p2: players[i+1], p1_score: 0, p2_score:0, sets1: [], sets2: [] });
+         } else {
+            // Handle BYE
+            round1Matches.push({ p1: players[i], p2: { name: 'BYE', rank: 0}, p1_score: 0, p2_score:0, sets1: [], sets2: [] });
+         }
+       }
+       // Dummy data for subsequent rounds
+       const semiFinalsMatches = round1Matches.slice(0, round1Matches.length / 2).map((_, i) => ({ p1: { name: 'Winner M' + (2*i+1), rank: ''}, p2: { name: 'Winner M' + (2*i+2), rank: ''}, p1_score: 0, p2_score:0, sets1: [], sets2: [] }));
+       const finalMatch = [{ p1: { name: 'Winner SF1', rank: ''}, p2: { name: 'Winner SF2', rank: ''}, p1_score: 0, p2_score:0, sets1: [], sets2: [] }];
+
+        return (
+            <>
+              <Round title="Round 1" matches={round1Matches.map(m => ({ p1: {...m.p1, score: m.p1_score, sets: m.sets1}, p2: {...m.p2, score: m.p2_score, sets: m.sets2} }))} />
+              <Round title="Semi-Finals" matches={semiFinalsMatches.map(m => ({ p1: {...m.p1, score: m.p1_score, sets: m.sets1}, p2: {...m.p2, score: m.p2_score, sets: m.sets2} }))} />
+              <Round title="Final" matches={finalMatch.map(m => ({ p1: {...m.p1, score: m.p1_score, sets: m.sets1}, p2: {...m.p2, score: m.p2_score, sets: m.sets2} }))} isFinal />
+            </>
+        )
+    }
+    return null;
+  }
 
   return (
     <div className="space-y-8">
@@ -55,9 +117,7 @@ export default function MatchTracker({ tournament }: MatchTrackerProps) {
       
       {isGroupStage && <GroupStage />}
 
-      <Round title="Round 1" matches={round1Matches} />
-      <Round title="Semi-Finals" matches={semiFinalsMatches} />
-      <Round title="Final" matches={finalMatch} isFinal />
+      {renderBrackets()}
 
       <Card>
         <CardHeader>
@@ -117,14 +177,14 @@ const Round = ({ title, matches, isFinal = false }: { title: string, matches: an
         </TableHeader>
         <TableBody>
           {matches.map((match, i) => (
-            <React.Fragment key={i}>
+            <React.Fragment key={`${match.p1.name}-${match.p2.name}-${i}`}>
               <TableRow>
                 <TableCell className="font-medium">{isFinal ? 'Final Match 01' : `Match ${i + 1}`}</TableCell>
                 <TableCell>
                   <div className="flex items-center justify-between">
-                    <span>{match.p1.name} ({match.p1.rank})</span>
+                    <span>{match.p1.name} {match.p1.rank ? `(${match.p1.rank})` : ''}</span>
                     <span className="text-muted-foreground mx-2">Vs</span>
-                    <span>{match.p2.name} ({match.p2.rank})</span>
+                    <span>{match.p2.name} {match.p2.rank ? `(${match.p2.rank})` : ''}</span>
                   </div>
                 </TableCell>
                 <TableCell className="text-center">
@@ -161,24 +221,3 @@ const Round = ({ title, matches, isFinal = false }: { title: string, matches: an
     </CardContent>
   </Card>
 );
-
-const round1Matches = [
-    { p1: { name: 'Luis Prado', rank: 1325, score: 3, sets: [11, 8, 11, 12] }, p2: { name: 'Luis Fernando Gonzales', rank: 1650, score: 1, sets: [8, 11, 9, 10] } },
-    { p1: { name: 'Walter Aguirre', rank: 1623, score: 2, sets: [11, 9, 7, 11, 8] }, p2: { name: 'Luis Nan', rank: 1783, score: 3, sets: [8, 11, 11, 9, 11] } },
-    { p1: { name: 'Carlos Freire', rank: 1432, score: 2, sets: [11, 9, 11, 5, 7] }, p2: { name: 'Luis Valencia', rank: 1653, score: 3, sets: [8, 11, 9, 11, 11] } },
-    { p1: { name: 'Luis Coco Rodriguez', rank: 1789, score: 3, sets: [11, 11, 9, 11] }, p2: { name: 'Jose Gomez', rank: 1610, score: 1, sets: [8, 9, 11, 9] } },
-];
-const semiFinalsMatches = [
-    { p1: { name: 'Luis Prado', rank: 1325, score: 1, sets: [8, 11, 9, 10] }, p2: { name: 'Luis Nan', rank: 1783, score: 3, sets: [11, 8, 11, 12] } },
-    { p1: { name: 'Luis Valencia', rank: 1653, score: 3, sets: [11, 9, 11, 11] }, p2: { name: 'Luis Coco Rodríguez', rank: 1789, score: 1, sets: [8, 11, 9, 9] } },
-];
-const finalMatch = [
-    { p1: { name: 'Luis Valencia', rank: 1653, score: 3, sets: [11, 8, 11, 12] }, p2: { name: 'Luis Nan', rank: 1783, score: 1, sets: [8, 11, 9, 10] } },
-];
-
-const TIPO_SIEMBRA_OPTIONS = [
-  { value: "aleatorio", label: "Aleatorio" },
-  { value: "tradicional", label: "Tradicional" },
-  { value: "secuencial", label: "Secuencial" },
-  { value: "culebrita", label: "Culebrita" },
-];
