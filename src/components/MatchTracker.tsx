@@ -66,10 +66,12 @@ export default function MatchTracker({ tournament }: MatchTrackerProps) {
         }
     }
     
-    // Shuffle matches for randomness
-    for (let i = allMatches.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [allMatches[i], allMatches[j]] = [allMatches[j], allMatches[i]];
+    // Shuffle matches for randomness only if seeding is 'aleatorio'
+    if (tournament.tipoSiembra === 'aleatorio') {
+      for (let i = allMatches.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allMatches[i], allMatches[j]] = [allMatches[j], allMatches[i]];
+      }
     }
 
     const rounds = Number(tournament.numeroRondas) || 1;
