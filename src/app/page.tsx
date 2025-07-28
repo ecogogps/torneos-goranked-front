@@ -24,15 +24,23 @@ export default function Home() {
     let currentPlayers = [...players];
     
     // Ensure players length is a power of 2 for bracket generation
-    const numPlayers = players.length;
+    let numPlayers = players.length;
     let rounds: Round[] = [];
+
+    // Add BYE if number of players is not a power of 2
+    if (numPlayers > 0 && (numPlayers & (numPlayers - 1)) !== 0) {
+        const nextPowerOf2 = Math.pow(2, Math.ceil(Math.log2(numPlayers)));
+        const byes = nextPowerOf2 - numPlayers;
+        for (let i = 0; i < byes; i++) {
+            currentPlayers.push({ name: 'BYE', rank: 0 });
+        }
+        numPlayers = currentPlayers.length;
+    }
   
     // Create initial round
     let roundMatches: Match[] = [];
     if (numPlayers > 0) {
-      if (numPlayers % 2 !== 0) {
-        currentPlayers.push({ name: 'BYE', rank: 0 });
-      }
+      
       for (let i = 0; i < currentPlayers.length; i += 2) {
         roundMatches.push({
           id: `m-${rounds.length}-${roundMatches.length}`,
@@ -321,18 +329,29 @@ export default function Home() {
 
             if(currentRound.title.includes('Fase de Grupos')) continue;
 
-            for (const nextMatch of nextRound.matches) {
-                const p1SourceMatchIndex = Math.floor(parseInt(nextMatch.id.split('-')[2], 10) / 2) * 2;
+            for (let j = 0; j < nextRound.matches.length; j++) {
+                const nextMatch = nextRound.matches[j];
+                const p1SourceMatchIndex = j * 2;
                 const p2SourceMatchIndex = p1SourceMatchIndex + 1;
                 
-                const p1Winner = currentRound.matches.find(m => m.table === p1SourceMatchIndex + 1)?.winner;
-                const p2Winner = currentRound.matches.find(m => m.table === p2SourceMatchIndex + 1)?.winner;
+                const p1Winner = currentRound.matches[p1SourceMatchIndex]?.winner;
+                const p2Winner = currentRound.matches[p2SourceMatchIndex]?.winner;
 
                 if (p1Winner && nextMatch.p1.name.startsWith('Winner')) {
                     nextMatch.p1 = {...p1Winner, score: 0, sets: []};
                 }
                 if (p2Winner && nextMatch.p2.name.startsWith('Winner')) {
                     nextMatch.p2 = {...p2Winner, score: 0, sets: []};
+                }
+
+                // If one of the players for the next match is now defined, but the other is a BYE, the defined player wins
+                if (p1Winner && !p2Winner && nextRound.matches[j].p2.name === 'BYE') {
+                    nextRound.matches[j].winner = p1Winner;
+                    nextRound.matches[j].isFinished = true;
+                }
+                if (!p1Winner && p2Winner && nextRound.matches[j].p1.name === 'BYE') {
+                    nextRound.matches[j].winner = p2Winner;
+                    nextRound.matches[j].isFinished = true;
                 }
 
                 if (nextMatch.p1.name !== 'BYE' && nextMatch.p2.name !== 'BYE' && !nextMatch.p1.name.startsWith('Winner') && !nextMatch.p2.name.startsWith('Winner')) {
