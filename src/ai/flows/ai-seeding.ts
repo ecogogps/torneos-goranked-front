@@ -42,82 +42,90 @@ export async function aiAssistedPlayerSeeding(
   return aiAssistedPlayerSeedingFlow(input);
 }
 
-const aiAssistedPlayerSeedingPrompt = ai.definePrompt({
-  name: 'aiAssistedPlayerSeedingPrompt',
-  input: {schema: AiAssistedPlayerSeedingInputSchema},
-  output: {schema: AiAssistedPlayerSeedingOutputSchema},
-  prompt: `You are an AI assistant that helps tournament organizers seed players based on a selected algorithm.
-
-You will receive a list of player names and a seeding algorithm.
-
-Based on the selected algorithm, return a list of the players in their seeded order.
-
-If the algorithm is "random", shuffle the players randomly.
-
-If the algorithm is "traditional" or "snake", sort the players based on their ranking, if provided, and seed them accordingly.
-If ranking data is unavailable return a random ordering.
-
-If the algorithm is "sequential", maintain the original order of the players.
-
-Here's the input:
-Algorithm: {{{algorithm}}}
-Player Names: {{playerNames}}
-Ranking Data: {{rankingData}}
-
-Output the seeded players and a brief explanation of the seeding process.
-
-{{#eq algorithm "traditional"}}
-If using traditional seeding, order player by ranking and put highest ranked players against the lowest ranked players.
-{{/eq}}
-
-{{#eq algorithm "snake"}}
-If using snake seeding, create an order based on ranking so players of similar rank play each other.
-{{/eq}}
-`,
-});
-
 const aiAssistedPlayerSeedingFlow = ai.defineFlow(
   {
     name: 'aiAssistedPlayerSeedingFlow',
     inputSchema: AiAssistedPlayerSeedingInputSchema,
     outputSchema: AiAssistedPlayerSeedingOutputSchema,
   },
-  async input => {
-    if (input.algorithm === 'random') {
-      // Shuffle the players randomly
-      const shuffledPlayers = [...input.playerNames].sort(() => Math.random() - 0.5);
-      return {
-        seededPlayers: shuffledPlayers,
-        explanation: 'The players were seeded randomly.',
-      };
-    } else if (input.algorithm === 'sequential') {
-      // Maintain the original order of the players
-      return {
-        seededPlayers: input.playerNames,
-        explanation: 'The players were seeded sequentially based on their original order.',
-      };
-    } else {
-      // Traditional or snake seeding
-      if (input.rankingData && input.rankingData.length > 0) {
-        // Sort players based on ranking
-        const sortedPlayers = [...input.rankingData].sort((a, b) => b.ranking - a.ranking);
-        const sortedPlayerNames = sortedPlayers.map(player => player.name);
+  async (input: AiAssistedPlayerSeedingInput): Promise<AiAssistedPlayerSeedingOutput> => {
+    const { algorithm, playerNames, rankingData } = input;
+    let seededPlayers: string[] = [...playerNames];
+    let explanation = '';
 
-        return {
-          seededPlayers: sortedPlayerNames,
-          explanation: 'The players were seeded based on their ranking.',
-        };
-      } else {
-        // If ranking data is not available, shuffle the players randomly
-        const shuffledPlayers = [...input.playerNames].sort(() => Math.random() - 0.5);
-        return {
-          seededPlayers: shuffledPlayers,
-          explanation: 'Ranking data was not available, so the players were seeded randomly.',
-        };
+    const getRankedPlayers = () => {
+      if (!rankingData || rankingData.length === 0) {
+        // If no ranking data, fall back to random for rank-based algorithms
+        return null;
       }
+      // Create a map for quick name-to-rank lookup
+      const rankMap = new Map(rankingData.map(p => [p.name, p.ranking]));
+      // Sort playerNames array based on the ranking data
+      return [...playerNames].sort((a, b) => (rankMap.get(b) ?? 0) - (rankMap.get(a) ?? 0));
+    };
+
+    switch (algorithm) {
+      case 'random':
+        seededPlayers = [...playerNames].sort(() => Math.random() - 0.5);
+        explanation = 'Los jugadores se han ordenado de forma aleatoria.';
+        break;
+
+      case 'sequential':
+        const rankedPlayersSeq = getRankedPlayers();
+        if (rankedPlayersSeq) {
+            seededPlayers = rankedPlayersSeq;
+            explanation = 'Los jugadores se han ordenado secuencialmente según su ranking.';
+        } else {
+            seededPlayers = [...playerNames]; // Keep original order if no ranking
+            explanation = 'Los jugadores se han mantenido en su orden original al no disponer de ranking.';
+        }
+        break;
+        
+      case 'traditional':
+        const rankedPlayersTrad = getRankedPlayers();
+        if (rankedPlayersTrad) {
+          const n = rankedPlayersTrad.length;
+          const half = Math.ceil(n / 2);
+          const topHalf = rankedPlayersTrad.slice(0, half);
+          const bottomHalf = rankedPlayersTrad.slice(half).reverse();
+          seededPlayers = [];
+          for (let i = 0; i < half; i++) {
+            seededPlayers.push(topHalf[i]);
+            if (bottomHalf[i]) {
+              seededPlayers.push(bottomHalf[i]);
+            }
+          }
+          explanation = 'Siembra tradicional: los mejores jugadores se distribuyen para no enfrentarse al principio.';
+        } else {
+          // Fallback to random if no ranking data
+          seededPlayers = [...playerNames].sort(() => Math.random() - 0.5);
+          explanation = 'No hay datos de ranking, se ha realizado una siembra aleatoria.';
+        }
+        break;
+
+      case 'snake':
+        const rankedPlayersSnake = getRankedPlayers();
+        if (rankedPlayersSnake) {
+            const n = rankedPlayersSnake.length;
+            const groups: string[][] = Array.from({ length: Math.ceil(n / 2) }, () => []);
+            for (let i = 0; i < n; i++) {
+                const groupIndex = i % 2 === 0 ? Math.floor(i / 2) : Math.floor((n - 1 - i) / 2);
+                groups[groupIndex].push(rankedPlayersSnake[i]);
+            }
+            seededPlayers = groups.flat();
+            explanation = 'Siembra de serpiente (culebrita): agrupa a jugadores con rankings cercanos.';
+        } else {
+            // Fallback to random if no ranking data
+            seededPlayers = [...playerNames].sort(() => Math.random() - 0.5);
+            explanation = 'No hay datos de ranking, se ha realizado una siembra aleatoria.';
+        }
+        break;
+        
+      default:
+        seededPlayers = [...playerNames].sort(() => Math.random() - 0.5);
+        explanation = 'Algoritmo no reconocido, se ha realizado una siembra aleatoria.';
     }
 
-    // const {output} = await aiAssistedPlayerSeedingPrompt(input);
-    // return output!;
+    return { seededPlayers, explanation };
   }
 );
