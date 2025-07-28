@@ -9,6 +9,7 @@ import type { Tournament, Match, Round, Player } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { TIPO_SIEMBRA_OPTIONS } from "@/lib/constants";
+import { aiAssistedPlayerSeeding, AiAssistedPlayerSeedingInput } from "@/ai/flows/ai-seeding";
 
 type View = "form" | "banner" | "match" | "podium";
 
@@ -16,6 +17,9 @@ export default function Home() {
   const [view, setView] = useState<View>("form");
   const [tournamentData, setTournamentData] = useState<Tournament | null>(null);
   const [rounds, setRounds] = useState<Round[]>([]);
+  const [seededPlayers, setSeededPlayers] = useState<Player[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
 
   const generateBracketRounds = (players: Player[]): Round[] => {
     const numPlayers = players.length;
@@ -36,40 +40,47 @@ export default function Home() {
           title: `Match ${roundMatches.length + 1}`,
           winner: currentPlayers[i+1]?.name === 'BYE' ? currentPlayers[i] : (currentPlayers[i].name === 'BYE' ? currentPlayers[i+1] : undefined),
           table: i + 1,
-          isFinished: false,
+          isFinished: currentPlayers[i+1]?.name === 'BYE' || currentPlayers[i].name === 'BYE',
         });
       }
       rounds.push({ title: `Round 1`, matches: roundMatches });
     }
 
-    let winnersFromPreviousRound = roundMatches;
-    while (winnersFromPreviousRound.length > 1) {
-      let nextRoundMatches: Match[] = [];
-      for (let i = 0; i < winnersFromPreviousRound.length; i += 2) {
-        const p1Match = winnersFromPreviousRound[i];
-        const p2Match = winnersFromPreviousRound[i+1];
-        
-        nextRoundMatches.push({
-          id: `m-${rounds.length}-${nextRoundMatches.length}`,
-          p1: { name: p1Match.winner?.name || `Winner of ${p1Match.title}`, score: 0, sets: [] },
-          p2: { name: p2Match?.winner?.name || (p2Match ? `Winner of ${p2Match.title}` : 'BYE'), score: 0, sets: [] },
-          title: `Match ${roundMatches.length + nextRoundMatches.length + 1}`,
-          winner: undefined,
-          table: nextRoundMatches.length + 1,
-          isFinished: false,
-        });
-      }
+    let previousRoundWinners = roundMatches.map(m => m.winner);
 
-      const roundNumber = rounds.length + 1;
-      let roundTitle = `Round ${roundNumber}`;
-      if (nextRoundMatches.length === 1) roundTitle = 'Final';
-      else if (nextRoundMatches.length === 2) roundTitle = 'Semi-Finals';
-      else if (nextRoundMatches.length <= 4 && nextRoundMatches.length > 2) roundTitle = 'Quarter-Finals';
+    while (previousRoundWinners.length > 1) {
+        let nextRoundMatches: Match[] = [];
+        let nextRoundWinners: (Player | undefined)[] = [];
+
+        for (let i = 0; i < previousRoundWinners.length; i += 2) {
+            const p1 = previousRoundWinners[i];
+            const p2 = previousRoundWinners[i + 1];
+
+            const match = {
+                id: `m-${rounds.length}-${nextRoundMatches.length}`,
+                p1: { name: p1?.name || `Winner Match ${Math.floor(i/2)*2 + 1}`, score: 0, sets: [], rank: p1?.rank },
+                p2: { name: p2?.name || (p2 === undefined ? 'BYE' : `Winner Match ${Math.floor(i/2)*2 + 2}`), score: 0, sets: [], rank: p2?.rank },
+                title: `Match ${rounds.flatMap(r => r.matches).length + nextRoundMatches.length + 1}`,
+                winner: p2 === undefined ? p1 : (p1?.name === 'BYE' ? p2 : (p2?.name === 'BYE' ? p1 : undefined)),
+                table: nextRoundMatches.length + 1,
+                isFinished: p1?.name === 'BYE' || p2?.name === 'BYE' || p2 === undefined,
+            };
+            
+            nextRoundMatches.push(match);
+            nextRoundWinners.push(match.winner);
+        }
+
+        const roundNumber = rounds.length + 1;
+        let roundTitle = `Round ${roundNumber}`;
+        if (nextRoundMatches.length === 1) roundTitle = 'Final';
+        else if (nextRoundMatches.length === 2) roundTitle = 'Semi-Finals';
+        else if (nextRoundMatches.length <= 4) roundTitle = 'Quarter-Finals';
 
 
-      rounds.push({ title: roundTitle, matches: nextRoundMatches });
-      winnersFromPreviousRound = nextRoundMatches;
+        rounds.push({ title: roundTitle, matches: nextRoundMatches });
+        previousRoundWinners = nextRoundWinners;
     }
+    
     return rounds;
   }
   
@@ -78,12 +89,18 @@ export default function Home() {
     if (numPlayers < 2) return [];
 
     let allMatches: Match[] = [];
+    let playerList = [...players];
+    
+    if (isRandom) {
+      playerList.sort(() => Math.random() - 0.5);
+    }
+    
     for (let i = 0; i < numPlayers; i++) {
       for (let j = i + 1; j < numPlayers; j++) {
         allMatches.push({
           id: `m-0-${allMatches.length}`,
-          p1: { ...players[i], score: 0, sets: [] },
-          p2: { ...players[j], score: 0, sets: [] },
+          p1: { ...playerList[i], score: 0, sets: [] },
+          p2: { ...playerList[j], score: 0, sets: [] },
           title: `Match ${allMatches.length + 1}`,
           winner: undefined,
           table: allMatches.length + 1,
@@ -91,10 +108,11 @@ export default function Home() {
         });
       }
     }
-
+    
     if (isRandom) {
-      allMatches.sort(() => Math.random() - 0.5);
+       allMatches.sort(() => Math.random() - 0.5);
     }
+
 
     if (roundsCount > 1) {
       const singleRoundMatches = [...allMatches];
@@ -113,22 +131,53 @@ export default function Home() {
     return allMatches;
   }
 
-  const handleCreateTournament = (data: Tournament) => {
+  const handleCreateTournament = async (data: Tournament) => {
+    setIsLoading(true);
     setTournamentData(data);
-    const players = Array.from({ length: Number(data.numeroParticipantes) || 8 }, (_, i) => ({
+    
+    const initialPlayers = Array.from({ length: Number(data.numeroParticipantes) || 8 }, (_, i) => ({
       name: `Player ${i + 1}`,
       rank: Math.floor(1500 + Math.random() * 500)
     }));
 
-    if (data.tipoEliminacion === 'Todos contra todos') {
-        const matches = generateRoundRobinMatches(players, Number(data.numeroRondas) || 1, data.tipoSiembra === 'aleatorio');
-        setRounds([{ title: 'Todos contra todos', matches }]);
-    } else {
-        const newRounds = generateBracketRounds(players);
-        setRounds(newRounds);
+    const seedingInput: AiAssistedPlayerSeedingInput = {
+      playerNames: initialPlayers.map(p => p.name),
+      rankingData: initialPlayers.map(p => ({ name: p.name, ranking: p.rank || 0 })),
+      algorithm: data.tipoSiembra as 'aleatorio' | 'tradicional' | 'secuencial'
+    };
+
+    try {
+        const seedingResult = await aiAssistedPlayerSeeding(seedingInput);
+        const finalSeededPlayers = seedingResult.seededPlayers.map(name => {
+            const originalPlayer = initialPlayers.find(p => p.name === name);
+            return originalPlayer || { name, rank: 0 };
+        });
+        setSeededPlayers(finalSeededPlayers);
+
+        if (data.tipoEliminacion === 'Todos contra todos') {
+            const matches = generateRoundRobinMatches(finalSeededPlayers, Number(data.numeroRondas) || 1, data.tipoSiembra === 'aleatorio');
+            setRounds([{ title: 'Todos contra todos', matches }]);
+        } else {
+            const newRounds = generateBracketRounds(finalSeededPlayers);
+            setRounds(newRounds);
+        }
+        
+        setView("banner");
+    } catch(error) {
+        console.error("Failed to seed players:", error);
+        // Fallback to simple list if AI seeding fails
+        setSeededPlayers(initialPlayers);
+         if (data.tipoEliminacion === 'Todos contra todos') {
+            const matches = generateRoundRobinMatches(initialPlayers, Number(data.numeroRondas) || 1, data.tipoSiembra === 'aleatorio');
+            setRounds([{ title: 'Todos contra todos', matches }]);
+        } else {
+            const newRounds = generateBracketRounds(initialPlayers);
+            setRounds(newRounds);
+        }
+        setView("banner");
+    } finally {
+        setIsLoading(false);
     }
-    
-    setView("banner");
   };
 
   const handleBackToForm = () => {
@@ -138,42 +187,65 @@ export default function Home() {
   };
   
   const handleUpdateMatch = (updatedMatch: Match) => {
-      const newRounds = rounds.map(round => ({
-        ...round,
-        matches: round.matches.map(match => {
-          if (match.id === updatedMatch.id) {
-            const p1Score = Number(updatedMatch.p1.score);
-            const p2Score = Number(updatedMatch.p2.score);
-            const winner = p1Score > p2Score ? updatedMatch.p1 : (p2Score > p1Score ? updatedMatch.p2 : undefined);
-            
-            return { ...updatedMatch, winner, isFinished: p1Score > 0 || p2Score > 0 };
-          }
-          return match;
-        }),
-      }));
+      const newRounds = [...rounds];
+
+      // Update the match in its round
+      for (const round of newRounds) {
+        const matchIndex = round.matches.findIndex(m => m.id === updatedMatch.id);
+        if (matchIndex !== -1) {
+          const p1Score = Number(updatedMatch.p1.score);
+          const p2Score = Number(updatedMatch.p2.score);
+          const winner = p1Score > p2Score ? updatedMatch.p1 : (p2Score > p1Score ? updatedMatch.p2 : undefined);
+          round.matches[matchIndex] = { ...updatedMatch, winner, isFinished: winner !== undefined };
+          break;
+        }
+      }
       
-      // Propagate winner to next round
-      for (let i = 0; i < newRounds.length - 1; i++) {
-        for (const match of newRounds[i].matches) {
-           if (match.winner) {
-              for (const nextRoundMatch of newRounds[i+1].matches) {
-                 if (nextRoundMatch.p1.name === `Winner of ${match.title}`) {
-                    nextRoundMatch.p1.name = match.winner.name;
-                    nextRoundMatch.p1.rank = match.winner.rank;
-                 }
-                 if (nextRoundMatch.p2.name === `Winner of ${match.title}`) {
-                    nextRoundMatch.p2.name = match.winner.name;
-                    nextRoundMatch.p2.rank = match.winner.rank;
-                 }
+      // Propagate winners to subsequent rounds for bracket-based tournaments
+      if (tournamentData?.tipoEliminacion !== 'Todos contra todos') {
+        for (let i = 0; i < newRounds.length - 1; i++) {
+          const currentRound = newRounds[i];
+          const nextRound = newRounds[i+1];
+
+          // Re-evaluate all matches in the next round
+          for (const nextMatch of nextRound.matches) {
+              const p1SourceMatchId = parseInt(nextMatch.id.split('-')[2], 10);
+              const p2SourceMatchId = p1SourceMatchId + 1;
+
+              const p1SourceMatch = currentRound.matches.find(m => m.title === `Match ${Math.floor(parseInt(m.id.split('-')[2]))*2 + 1}`);
+              const p2SourceMatch = currentRound.matches.find(m => m.title === `Match ${Math.floor(parseInt(m.id.split('-')[2]))*2 + 2}`);
+              
+              const p1Winner = currentRound.matches[Math.floor((parseInt(nextMatch.id.split('-')[2]))/2)*2]?.winner;
+              const p2Winner = currentRound.matches[Math.floor((parseInt(nextMatch.id.split('-')[2]))/2)*2+1]?.winner;
+
+              if(p1Winner) {
+                const p1PlaceholderName = `Winner of ${currentRound.matches.find(m => m.winner?.name === p1Winner.name)?.title}`
+                if (nextMatch.p1.name.startsWith('Winner')) {
+                  nextMatch.p1 = {...p1Winner, score: 0, sets: []};
+                }
               }
-           }
+               if(p2Winner) {
+                 const p2PlaceholderName = `Winner of ${currentRound.matches.find(m => m.winner?.name === p2Winner.name)?.title}`
+                 if (nextMatch.p2.name.startsWith('Winner')) {
+                    nextMatch.p2 = {...p2Winner, score: 0, sets: []};
+                 }
+               }
+          }
         }
       }
 
       setRounds(newRounds);
   };
-
+  
   const renderView = () => {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center items-center h-64">
+          <div className="text-xl">Creando torneo...</div>
+        </div>
+      );
+    }
+
     switch (view) {
       case "form":
         return <TournamentForm onSubmit={handleCreateTournament} />;
@@ -184,6 +256,7 @@ export default function Home() {
                   tournament={tournamentData!} 
                   rounds={rounds}
                   onUpdateMatch={handleUpdateMatch}
+                  seededPlayers={seededPlayers}
                 />;
       case "podium":
         return <Podium tournament={tournamentData!} rounds={rounds} />;
@@ -193,7 +266,7 @@ export default function Home() {
   };
   
   const NavButtons = () => {
-    if (view === "form") return null;
+    if (view === "form" || isLoading) return null;
     
     const viewOrder: View[] = ["banner", "match", "podium"];
     const currentIndex = viewOrder.indexOf(view);

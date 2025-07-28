@@ -1,6 +1,6 @@
 "use client";
 
-import type { Tournament, Round, Match } from "@/lib/types";
+import type { Tournament, Round, Match, Player } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -24,9 +24,10 @@ interface MatchTrackerProps {
   tournament: Tournament;
   rounds: Round[];
   onUpdateMatch: (match: Match) => void;
+  seededPlayers: Player[];
 }
 
-export default function MatchTracker({ tournament, rounds, onUpdateMatch }: MatchTrackerProps) {
+export default function MatchTracker({ tournament, rounds, onUpdateMatch, seededPlayers }: MatchTrackerProps) {
   const isGroupStage = tournament.tipoEliminacion === 'Por Grupos';
   const isRoundRobin = tournament.tipoEliminacion === 'Todos contra todos';
 
@@ -81,7 +82,7 @@ export default function MatchTracker({ tournament, rounds, onUpdateMatch }: Matc
         </CardHeader>
       </Card>
       
-      {isGroupStage && <GroupStage />}
+      {isGroupStage && <GroupStage seededPlayers={seededPlayers} />}
 
       {renderBrackets()}
 
@@ -115,32 +116,35 @@ const BracketMatch = ({ match }: { match: Match }) => {
   )
 }
 
-const GroupStage = () => (
-    <Card>
-        <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Users />Fase de Grupos</CardTitle>
-            <CardDescription>Configuración y visualización de grupos generados por siembra {TIPO_SIEMBRA_OPTIONS.find(o => o.value === 'aleatorio')?.label}.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-                <CardHeader><CardTitle>GROUP 1</CardTitle></CardHeader>
-                <CardContent className="space-y-2"><p>Participant 1</p><p>Participant 8</p></CardContent>
-            </Card>
-            <Card>
-                <CardHeader><CardTitle>GROUP 2</CardTitle></CardHeader>
-                <CardContent className="space-y-2"><p>Participant 2</p><p>Participant 7</p></CardContent>
-            </Card>
-            <Card>
-                <CardHeader><CardTitle>GROUP 3</CardTitle></CardHeader>
-                <CardContent className="space-y-2"><p>Participant 3</p><p>Participant 6</p></CardContent>
-            </Card>
-            <Card>
-                <CardHeader><CardTitle>GROUP 4</CardTitle></CardHeader>
-                <CardContent className="space-y-2"><p>Participant 4</p><p>Participant 5</p></CardContent>
-            </Card>
-        </CardContent>
-    </Card>
-)
+const GroupStage = ({ seededPlayers }: { seededPlayers: Player[] }) => {
+    const numPlayers = seededPlayers.length;
+    const numGroups = numPlayers / 2;
+    const groups: Player[][] = Array.from({ length: numGroups }, () => []);
+
+    for (let i = 0; i < numPlayers / 2; i++) {
+        groups[i].push(seededPlayers[i]);
+        groups[i].push(seededPlayers[numPlayers - 1 - i]);
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Users />Fase de Grupos</CardTitle>
+                <CardDescription>Configuración y visualización de grupos generados por siembra {TIPO_SIEMBRA_OPTIONS.find(o => o.value === 'tradicional')?.label}.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {groups.map((group, index) => (
+                    <Card key={index}>
+                        <CardHeader><CardTitle>GROUP {index + 1}</CardTitle></CardHeader>
+                        <CardContent className="space-y-2">
+                            {group.map(player => <p key={player.name}>{player.name}</p>)}
+                        </CardContent>
+                    </Card>
+                ))}
+            </CardContent>
+        </Card>
+    );
+}
 
 const RoundRobinView = ({ matches, onUpdateMatch }: { matches: Match[], onUpdateMatch: (match: Match) => void }) => {
   const [editingMatchId, setEditingMatchId] = React.useState<string | null>(null);
@@ -255,7 +259,7 @@ const ResultsTableView = ({ rounds, onUpdateMatch }: { rounds: Round[], onUpdate
                             </TableCell>
                             <TableCell className="text-center">
                                 <div className="flex items-center justify-center gap-2">
-                                    {match.winner?.name === match.p1.name && <div className="w-4 h-4 rounded-full bg-green-500"></div>}
+                                    {match.winner?.name === match.p1.name && match.p1.name !== 'BYE' && <div className="w-4 h-4 rounded-full bg-green-500"></div>}
                                     
                                     {editingMatchId === match.id ? (
                                       <Input type="number" className="w-16 h-8 text-lg" value={currentScores.p1} onChange={(e) => setCurrentScores(s => ({ ...s, p1: Number(e.target.value) }))} />
@@ -279,14 +283,14 @@ const ResultsTableView = ({ rounds, onUpdateMatch }: { rounds: Round[], onUpdate
                                       <Badge variant="secondary" className="text-lg">{match.p2.score}</Badge>
                                     )}
 
-                                    {match.winner?.name === match.p2.name && <div className="w-4 h-4 rounded-full bg-green-500"></div>}
+                                    {match.winner?.name === match.p2.name && match.p2.name !== 'BYE' && <div className="w-4 h-4 rounded-full bg-green-500"></div>}
                                 </div>
                             </TableCell>
                             <TableCell className="text-right">
                                 {editingMatchId === match.id ? (
                                    <Button variant="ghost" size="icon" onClick={() => handleSave(match)}><Save className="h-4 w-4" /></Button>
                                 ) : (
-                                   <Button variant="ghost" size="icon" onClick={() => handleEdit(match)}><Pencil className="h-4 w-4" /></Button>
+                                   <Button variant="ghost" size="icon" onClick={() => handleEdit(match)} disabled={match.p1.name === 'BYE' || match.p2.name === 'BYE'}><Pencil className="h-4 w-4" /></Button>
                                 )}
                             </TableCell>
                         </TableRow>

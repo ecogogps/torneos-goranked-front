@@ -48,17 +48,17 @@ export default function Podium({ tournament, rounds }: PodiumProps) {
             }
         });
 
-        const sortedPlayers = Array.from(allPlayers.values()).sort((a, b) => playerScores[b.name] - playerScores[a.name]);
+        const sortedPlayers = Array.from(allPlayers.values()).sort((a, b) => (playerScores[b.name] || 0) - (playerScores[a.name] || 0));
         standings = sortedPlayers.map((p, i) => ({
             player: p,
             position: i + 1,
-            points: 36 - i * 8, // Dummy points
-            prize: 123 - i * 20, // Dummy prize
+            points: Math.max(0, 36 - i * 8), // Dummy points
+            prize: Math.max(0, 123 - i * 20), // Dummy prize
         }));
 
     } else { // Direct Elimination or Group Stage (simplified)
         const finalRound = rounds[rounds.length - 1];
-        const semiFinalRound = rounds[rounds.length - 2];
+        const semiFinalRound = rounds.length > 1 ? rounds[rounds.length - 2] : undefined;
         
         const winner = finalRound?.matches[0]?.winner;
         const runnerUp = finalRound?.matches[0] ? (finalRound.matches[0].winner?.name === finalRound.matches[0].p1.name ? finalRound.matches[0].p2 : finalRound.matches[0].p1) : undefined;
@@ -67,12 +67,12 @@ export default function Podium({ tournament, rounds }: PodiumProps) {
         let fourthPlace: Player | undefined;
 
         if (semiFinalRound && semiFinalRound.matches.length === 2) {
-            const losers = semiFinalRound.matches.map(m => m.winner?.name === m.p1.name ? m.p2 : m.p1);
+            const losers = semiFinalRound.matches.map(m => (m.winner?.name === m.p1.name ? m.p2 : m.p1)).filter(p => p.name !== 'BYE');
             thirdPlace = losers[0]; // Simplified: just picking one
             fourthPlace = losers[1];
         }
 
-        if (winner) standings.push({ player: winner, position: 1, points: 36, prize: 123 });
+        if (winner && winner.name !== 'BYE') standings.push({ player: winner, position: 1, points: 36, prize: 123 });
         if (runnerUp && runnerUp.name !== 'BYE') standings.push({ player: runnerUp, position: 2, points: 24, prize: 115 });
         if (thirdPlace && thirdPlace.name !== 'BYE') standings.push({ player: thirdPlace, position: 3, points: 12, prize: 70 });
         if (fourthPlace && fourthPlace.name !== 'BYE') standings.push({ player: fourthPlace, position: 4, points: 6, prize: 67 });
@@ -81,7 +81,7 @@ export default function Podium({ tournament, rounds }: PodiumProps) {
     return standings;
   }, [rounds, tournament.tipoEliminacion]);
 
-  const champion = finalStandings.find(s => s.position === 1)?.player;
+  const champion = finalStandings.find(s => s.position === 1);
 
   return (
     <div className="space-y-8">
@@ -96,10 +96,10 @@ export default function Podium({ tournament, rounds }: PodiumProps) {
           <div className="flex flex-col items-center gap-2">
             <Trophy className="w-16 h-16 text-yellow-500" />
             <h3 className="text-2xl font-semibold">Champion</h3>
-            <p className="text-4xl font-bold text-primary">{champion?.name || 'Por definir'}</p>
+            <p className="text-4xl font-bold text-primary">{champion?.player.name || 'Por definir'}</p>
             {champion && (
               <p className="text-lg text-muted-foreground flex items-center gap-2">
-                Ranking: {champion.rank} <ArrowRightSmall /> {champion.rank ? champion.rank + 36 : 'N/A'} <TrendingUp className="text-green-500" />
+                Ranking: {champion.player.rank} <ArrowRightSmall /> {champion.player.rank ? champion.player.rank + champion.points : 'N/A'} <TrendingUp className="text-green-500" />
               </p>
             )}
           </div>
