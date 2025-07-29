@@ -46,7 +46,7 @@ export default function MatchTracker({ tournament, rounds, onUpdateMatch, seeded
                   <TabsTrigger value="mesa">Mesa</TabsTrigger>
                 </TabsList>
                 <TabsContent value="cronograma">
-                   <RoundRobinView matches={allMatches} />
+                   <RoundRobinView matches={allMatches} onUpdateMatch={onUpdateMatch} />
                 </TabsContent>
                 <TabsContent value="mesa">
                   <ResultsTableView rounds={rounds} onUpdateMatch={onUpdateMatch} tournamentCode={tournament.codigoTorneo} />
@@ -128,34 +128,16 @@ const BracketMatch = ({ match }: { match: Match }) => {
 
 const GroupStageView = ({ seededPlayers }: { seededPlayers: Player[] }) => {
     const numPlayers = seededPlayers.length;
-    if (numPlayers === 0) return null;
+    if (numPlayers < 4) return null;
 
     const numGroups = Math.floor(numPlayers / 2);
     const groups: Player[][] = Array.from({ length: numGroups }, () => []);
-
-    if (numPlayers < 4) return null;
-
-    // The seededPlayers list is now correctly ordered by the "snake" algorithm.
-    // We just need to divide it into groups.
-    const groupSize = Math.ceil(numPlayers / numGroups);
-    for (let i = 0; i < numGroups; i++) {
-        groups[i] = seededPlayers.slice(i * groupSize, (i + 1) * groupSize);
+    
+    // Distribute players into groups sequentially based on the pre-seeded list
+    for (let i = 0; i < numPlayers; i++) {
+        groups[i % numGroups].push(seededPlayers[i]);
     }
     
-    // A different way to populate groups based on the image logic
-    const rankedPlayers = [...seededPlayers].sort((a, b) => (b.rank || 0) - (a.rank || 0));
-    const snakeGroups: Player[][] = Array.from({ length: numGroups }, () => []);
-    let direction = 1;
-    for (let i = 0; i < rankedPlayers.length; i++) {
-        const player = rankedPlayers[i];
-        const groupIndex = direction === 1 ? i % numGroups : numGroups - 1 - (i % numGroups);
-        snakeGroups[groupIndex].push(player);
-        if ((i + 1) % numGroups === 0) {
-            direction *= -1;
-        }
-    }
-
-
     return (
         <Card>
             <CardHeader>
@@ -163,7 +145,7 @@ const GroupStageView = ({ seededPlayers }: { seededPlayers: Player[] }) => {
                 <CardDescription>Configuración y visualización de grupos generados por el tipo de siembra seleccionado.</CardDescription>
             </CardHeader>
             <CardContent className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {snakeGroups.map((group, index) => (
+                {groups.map((group, index) => (
                     <Card key={index}>
                         <CardHeader><CardTitle>GRUPO {index + 1}</CardTitle></CardHeader>
                         <CardContent className="space-y-2">
@@ -176,7 +158,7 @@ const GroupStageView = ({ seededPlayers }: { seededPlayers: Player[] }) => {
     );
 }
 
-const RoundRobinView = ({ matches }: { matches: Match[] }) => {
+const RoundRobinView = ({ matches, onUpdateMatch }: { matches: Match[], onUpdateMatch: (match: Match) => void }) => {
   const sortedMatches = React.useMemo(() => {
     return [...matches].sort((a, b) => {
         const numA = parseInt(a.title.replace(/[^0-9]/g, ''), 10);
@@ -293,7 +275,7 @@ const ResultsTableView = ({ rounds, onUpdateMatch, tournamentCode }: { rounds: R
                                 {editingMatchId === match.id ? (
                                    <Button variant="ghost" size="icon" onClick={() => handleSave(match)}><Save className="h-4 w-4" /></Button>
                                 ) : (
-                                   <Button variant="ghost" size="icon" onClick={() => handleEdit(match)} disabled={match.p1.name.startsWith('Winner') || match.p2.name.startsWith('Winner')}><Pencil className="h-4 w-4" /></Button>
+                                   <Button variant="ghost" size="icon" onClick={() => handleEdit(match)} disabled={match.p1.name.startsWith('Winner') || match.p2.name.startsWith('Winner') || match.isFinished || match.p1.name === 'BYE' || match.p2.name === 'BYE'}><Pencil className="h-4 w-4" /></Button>
                                 )}
                             </TableCell>
                         </TableRow>

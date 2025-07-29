@@ -74,7 +74,7 @@ const aiAssistedPlayerSeedingFlow = ai.defineFlow(
         const rankedPlayersSeq = getRankedPlayers();
         if (rankedPlayersSeq) {
             seededPlayers = rankedPlayersSeq;
-            explanation = 'Los jugadores se han ordenado secuencialmente según su ranking.';
+            explanation = 'Los jugadores se han ordenado secuencialmente según su ranking, de mayor a menor.';
         } else {
             seededPlayers = [...playerNames]; // Keep original order if no ranking
             explanation = 'Los jugadores se han mantenido en su orden original al no disponer de ranking.';
@@ -85,33 +85,35 @@ const aiAssistedPlayerSeedingFlow = ai.defineFlow(
         const rankedPlayersTrad = getRankedPlayers();
         if (rankedPlayersTrad) {
           const numPlayers = rankedPlayersTrad.length;
-          // For "Por Grupos", numGroups is numPlayers / 2. For "Eliminacion Directa", it's more complex.
-          // We will assume "Por Grupos" logic here as snake seeding is for groups.
-          // This logic might need adjustment if used for direct elimination brackets.
-          const numGroups = Math.floor(numPlayers / 2);
-          if (numGroups < 1) {
+          // In "Por Grupos" or "Eliminacion Directa", the number of "groups" for the snake seeding
+          // is half the number of players. This determines the bracket structure.
+          const numGroups = Math.ceil(numPlayers / 2);
+          if (numGroups < 2) {
              seededPlayers = rankedPlayersTrad;
-             explanation = 'No hay suficientes jugadores para formar grupos, se ordenaron por ranking.';
+             explanation = 'No hay suficientes jugadores para aplicar la siembra de serpiente, se ordenaron por ranking.';
              break;
           }
 
           const groups: string[][] = Array.from({ length: numGroups }, () => []);
           let direction = 1; // 1 for forward, -1 for backward
+          let groupIndex = 0;
 
           for (let i = 0; i < numPlayers; i++) {
               const player = rankedPlayersTrad[i];
-              const groupIndex = direction === 1 ? i % numGroups : numGroups - 1 - (i % numGroups);
-              groups[groupIndex].push(player);
-
-              // Change direction when a "row" of players is complete
-              if ((i + 1) % numGroups === 0) {
-                  direction *= -1;
+              // The top seeds go into their own "groups" first.
+              if (i < numGroups) {
+                  groups[i].push(player);
+              } else {
+                  // Subsequent players are added in snake order.
+                  const playerIndexInSecondHalf = i - numGroups;
+                  const groupForPlayer = numGroups - 1 - playerIndexInSecondHalf;
+                  groups[groupForPlayer].push(player);
               }
           }
           
           // Flatten the groups back into a single seeded list
           seededPlayers = groups.flat();
-          explanation = 'Siembra tradicional (serpiente): los jugadores se han distribuido en grupos para equilibrar la fuerza.';
+          explanation = 'Siembra tradicional (serpiente): los jugadores se han distribuido para equilibrar la fuerza en el cuadro.';
 
         } else {
           // Fallback to random if no ranking data
