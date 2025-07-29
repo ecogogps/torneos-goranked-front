@@ -134,6 +134,7 @@ export default function Home() {
     rounds.push({ title: `Round 1`, matches: firstRoundMatches });
 
     let previousRoundWinners = firstRoundMatches.map(m => m.winner);
+    let previousRoundMatches = firstRoundMatches;
     
     while (previousRoundWinners.filter(p => p !== undefined).length > 1 || (previousRoundWinners.length > 1 && previousRoundWinners.some(p=> p === undefined))) {
       const nextRoundMatches: Match[] = [];
@@ -155,8 +156,8 @@ export default function Home() {
 
         const match = {
           id: `m-${rounds.length}-${nextRoundMatches.length}`,
-          p1: { name: p1?.name || `Winner Match ${Math.floor(i/2)*2 + 1}`, score: 0, sets: [], rank: p1?.rank },
-          p2: { name: p2?.name || `Winner Match ${Math.floor(i/2)*2 + 2}`, score: 0, sets: [], rank: p2?.rank },
+          p1: { name: p1?.name || `Winner ${previousRoundMatches[i]?.title || ''}`, score: 0, sets: [], rank: p1?.rank },
+          p2: { name: p2?.name || `Winner ${previousRoundMatches[i+1]?.title || ''}`, score: 0, sets: [], rank: p2?.rank },
           title: `Match ${rounds.flatMap(r => r.matches).length + nextRoundMatches.length + 1}`,
           winner: undefined,
           table: nextRoundMatches.length + 1,
@@ -186,6 +187,7 @@ export default function Home() {
 
       rounds.push({ title: roundTitle, matches: nextRoundMatches });
       previousRoundWinners = nextRoundWinners;
+      previousRoundMatches = nextRoundMatches;
     }
 
     return rounds;
