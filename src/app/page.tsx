@@ -47,6 +47,15 @@ const fictitiousPlayers: Player[] = [
     { name: "Player 32", rank: 840 },
 ];
 
+// Fisher-Yates shuffle function
+const shuffle = (array: any[]) => {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+};
+
 export default function Home() {
   const [view, setView] = useState<View>("form");
   const [tournamentData, setTournamentData] = useState<Tournament | null>(null);
@@ -55,7 +64,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
 
 
-  const generateBracketRounds = (players: Player[]): Round[] => {
+  const generateBracketRounds = (players: Player[], isRandomSeeding: boolean): Round[] => {
     let currentPlayers = [...players];
     const numPlayers = players.length;
     const rounds: Round[] = [];
@@ -131,7 +140,11 @@ export default function Home() {
       const nextRoundWinners: (Player | undefined)[] = [];
       
       // Filter out BYE players from winners before creating the next round
-      const actualWinners = previousRoundWinners.filter(p => p && p.name !== 'BYE');
+      let actualWinners = previousRoundWinners.filter(p => p && p.name !== 'BYE') as Player[];
+
+      if (isRandomSeeding) {
+        actualWinners = shuffle(actualWinners);
+      }
 
       for (let i = 0; i < actualWinners.length; i += 2) {
         const p1 = actualWinners[i];
@@ -175,9 +188,9 @@ export default function Home() {
     return rounds;
   }
 
-  const generateGroupStageAndBracket = (players: Player[]): Round[] => {
+  const generateGroupStageAndBracket = (players: Player[], isRandomSeeding: boolean): Round[] => {
     const numPlayers = players.length;
-    if (numPlayers < 4) return generateBracketRounds(players); // Not enough for groups
+    if (numPlayers < 4) return generateBracketRounds(players, isRandomSeeding); // Not enough for groups
 
     const numGroups = Math.floor(numPlayers / 2);
     const groupSize = Math.floor(numPlayers/numGroups);
@@ -225,7 +238,7 @@ export default function Home() {
       rank: 0, // Rank is not relevant for placeholders
     }));
     
-    const knockoutRounds = generateBracketRounds(knockoutPlayers);
+    const knockoutRounds = generateBracketRounds(knockoutPlayers, isRandomSeeding);
     knockoutRounds.forEach(round => {
       round.title = `Fase Final - ${round.title}`
     })
@@ -293,31 +306,34 @@ export default function Home() {
             return originalPlayer || { name, rank: 0 };
         });
         setSeededPlayers(finalSeededPlayers);
+        
+        const isRandomSeeding = data.tipoSiembra === 'aleatorio';
 
         if (data.tipoEliminacion === 'Todos contra todos') {
             const matches = generateRoundRobinMatches(finalSeededPlayers.filter(p => p.name !== 'BYE'), Number(data.numeroRondas) || 1);
             setRounds([{ title: 'Todos contra todos', matches }]);
         } else if (data.tipoEliminacion === 'Por Grupos') {
-            const newRounds = generateGroupStageAndBracket(finalSeededPlayers.filter(p => p.name !== 'BYE'));
+            const newRounds = generateGroupStageAndBracket(finalSeededPlayers.filter(p => p.name !== 'BYE'), isRandomSeeding);
             setRounds(newRounds);
         } else { // Eliminacion Directa
-            const newRounds = generateBracketRounds(finalSeededPlayers);
+            const newRounds = generateBracketRounds(finalSeededPlayers, isRandomSeeding);
             setRounds(newRounds);
         }
         
         setView("match");
     } catch(error) {
         console.error("Failed to seed players:", error);
+        const isRandomSeeding = data.tipoSiembra === 'aleatorio';
         // Fallback to simple list if AI seeding fails
         setSeededPlayers(initialPlayers);
          if (data.tipoEliminacion === 'Todos contra todos') {
             const matches = generateRoundRobinMatches(initialPlayers, Number(data.numeroRondas) || 1);
             setRounds([{ title: 'Todos contra todos', matches }]);
         } else if (data.tipoEliminacion === 'Por Grupos') {
-            const newRounds = generateGroupStageAndBracket(initialPlayers);
+            const newRounds = generateGroupStageAndBracket(initialPlayers, isRandomSeeding);
             setRounds(newRounds);
         } else { // Eliminacion Directa
-            const newRounds = generateBracketRounds(initialPlayers);
+            const newRounds = generateBracketRounds(initialPlayers, isRandomSeeding);
             setRounds(newRounds);
         }
         setView("match");
@@ -413,14 +429,25 @@ export default function Home() {
             const nextRound = newRounds[i+1];
 
             if(currentRound.title.includes('Fase de Grupos')) continue;
+            
+            const isRandomSeeding = tournamentData?.tipoSiembra === 'aleatorio';
+            let winners = currentRound.matches.map(m => m.winner);
+            
+            if (isRandomSeeding) {
+              const definedWinners = winners.filter(w => w !== undefined) as Player[];
+              const undefinedCount = winners.length - definedWinners.length;
+              const shuffledWinners = shuffle(definedWinners);
+              winners = [...shuffledWinners, ...Array(undefinedCount).fill(undefined)];
+            }
+
 
             for (let j = 0; j < nextRound.matches.length; j++) {
                 const nextMatch = nextRound.matches[j];
                 const p1SourceMatchIndex = j * 2;
                 const p2SourceMatchIndex = p1SourceMatchIndex + 1;
                 
-                const p1Winner = currentRound.matches[p1SourceMatchIndex]?.winner;
-                const p2Winner = currentRound.matches[p2SourceMatchIndex]?.winner;
+                const p1Winner = winners[p1SourceMatchIndex];
+                const p2Winner = winners[p2SourceMatchIndex];
 
                 if (p1Winner && (nextMatch.p1.name.startsWith('Winner') || nextMatch.p1.name === 'BYE')) {
                     nextMatch.p1 = {...p1Winner, score: 0, sets: []};
