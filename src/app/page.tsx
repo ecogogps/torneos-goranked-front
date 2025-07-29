@@ -141,14 +141,17 @@ export default function Home() {
       
       // Filter out BYE players from winners before creating the next round
       let actualWinners = previousRoundWinners.filter(p => p && p.name !== 'BYE') as Player[];
+      let placeholders = previousRoundWinners.filter(p => p === undefined);
 
       if (isRandomSeeding) {
         actualWinners = shuffle(actualWinners);
       }
+      
+      const participantsForNextRound = [...actualWinners, ...placeholders];
 
-      for (let i = 0; i < actualWinners.length; i += 2) {
-        const p1 = actualWinners[i];
-        const p2 = actualWinners[i + 1];
+      for (let i = 0; i < participantsForNextRound.length; i += 2) {
+        const p1 = participantsForNextRound[i];
+        const p2 = participantsForNextRound[i + 1];
 
         const match = {
           id: `m-${rounds.length}-${nextRoundMatches.length}`,
@@ -171,7 +174,7 @@ export default function Home() {
         nextRoundWinners.push(match.winner);
       }
       
-      if (nextRoundMatches.length === 0 && actualWinners.length === 1) {
+      if (nextRoundMatches.length === 0 && actualWinners.length <= 1) {
           break; // Tournament is over
       }
 
@@ -199,9 +202,6 @@ export default function Home() {
     // The players are already seeded (e.g., via snake). We just distribute them into groups.
     // For snake seeding, players are ordered like [1, 8, 4, 5, 2, 7, 3, 6] for 8p/4g
     // We need to create the groups based on this order.
-    // The logic in ai-seeding already provides the flat list in the correct order for bracket generation,
-    // but for group stage visualization, we need to reconstruct the groups.
-    
     // The `aiAssistedPlayerSeeding` flow with 'tradicional' returns a flat list that represents
     // the match-ups (e.g., [P1, P8, P2, P7, P3, P6, P4, P5]).
     // For group stage, we need to re-group them. The simplest way is sequential distribution
@@ -435,9 +435,9 @@ export default function Home() {
             
             if (isRandomSeeding) {
               const definedWinners = winners.filter(w => w !== undefined) as Player[];
-              const undefinedCount = winners.length - definedWinners.length;
+              const undefinedSlots = winners.length - definedWinners.length;
               const shuffledWinners = shuffle(definedWinners);
-              winners = [...shuffledWinners, ...Array(undefinedCount).fill(undefined)];
+              winners = [...shuffledWinners, ...Array(undefinedSlots).fill(undefined)];
             }
 
 
@@ -449,14 +449,14 @@ export default function Home() {
                 const p1Winner = winners[p1SourceMatchIndex];
                 const p2Winner = winners[p2SourceMatchIndex];
 
-                if (p1Winner && (nextMatch.p1.name.startsWith('Winner') || nextMatch.p1.name === 'BYE')) {
+                if (p1Winner && (nextMatch.p1.name.startsWith('Winner') || nextMatch.p1.name === 'BYE' || nextMatch.p1.name === 'TBD')) {
                     nextMatch.p1 = {...p1Winner, score: 0, sets: []};
                 }
-                if (p2Winner && (nextMatch.p2.name.startsWith('Winner') || nextMatch.p2.name === 'BYE')) {
+                if (p2Winner && (nextMatch.p2.name.startsWith('Winner') || nextMatch.p2.name === 'BYE' || nextMatch.p2.name === 'TBD')) {
                     nextMatch.p2 = {...p2Winner, score: 0, sets: []};
                 }
 
-                if (!nextMatch.p1.name.startsWith('Winner') && !nextMatch.p2.name.startsWith('Winner')) {
+                if (!nextMatch.p1.name.startsWith('Winner') && !nextMatch.p2.name.startsWith('Winner') && nextMatch.p1.name !== 'TBD' && nextMatch.p2.name !== 'TBD' ) {
                     const p1s = Number(nextMatch.p1.score);
                     const p2s = Number(nextMatch.p2.score);
                     if(p1s > 0 || p2s > 0){
