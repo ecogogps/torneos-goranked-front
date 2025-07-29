@@ -156,8 +156,8 @@ export default function Home() {
 
         const match = {
           id: `m-${rounds.length}-${nextRoundMatches.length}`,
-          p1: { name: p1?.name || `Winner ${previousRoundMatches[i]?.title || ''}`, score: 0, sets: [], rank: p1?.rank },
-          p2: { name: p2?.name || `Winner ${previousRoundMatches[i+1]?.title || ''}`, score: 0, sets: [], rank: p2?.rank },
+          p1: { name: p1?.name || `Winner ${previousRoundMatches[p1 ? participantsForNextRound.indexOf(p1) : i]?.title || ''}`, score: 0, sets: [], rank: p1?.rank },
+          p2: { name: p2?.name || `Winner ${previousRoundMatches[p2 ? participantsForNextRound.indexOf(p2) : i + 1]?.title || ''}`, score: 0, sets: [], rank: p2?.rank },
           title: `Match ${rounds.flatMap(r => r.matches).length + nextRoundMatches.length + 1}`,
           winner: undefined,
           table: nextRoundMatches.length + 1,
@@ -235,10 +235,14 @@ export default function Home() {
     // Create placeholders for the knockout stage
     // Winners from each group will advance.
     const knockoutPlayersCount = groups.filter(g => g.length > 0).length;
-    const knockoutPlayers: Player[] = Array.from({ length: knockoutPlayersCount }, (_, i) => ({
+    let knockoutPlayers: Player[] = Array.from({ length: knockoutPlayersCount }, (_, i) => ({
       name: `Winner Group ${i + 1}`,
       rank: 0, // Rank is not relevant for placeholders
     }));
+
+    if (isRandomSeeding) {
+        knockoutPlayers = shuffle(knockoutPlayers);
+    }
     
     const knockoutRounds = generateBracketRounds(knockoutPlayers, isRandomSeeding);
     knockoutRounds.forEach(round => {
@@ -403,18 +407,30 @@ export default function Home() {
                 const winnerPlayer = seededPlayers.find(p => p.name === winnerName) || { name: winnerName, rank: 0 };
                 groupWinners.push(winnerPlayer);
             });
+            
+            let finalWinners = [...groupWinners];
+            if (tournamentData.tipoSiembra === 'aleatorio') {
+                finalWinners = shuffle(finalWinners);
+            }
 
             // Populate the first knockout round
             if (newRounds.length > 1) {
                 const firstKnockoutRound = newRounds[1];
                 for (let i = 0; i < firstKnockoutRound.matches.length; i++) {
                     const match = firstKnockoutRound.matches[i];
+                    // Original player names in the knockout round are placeholders like "Winner Group 1"
+                    // We need to find which shuffled winner corresponds to which original placeholder.
+                    // The easiest way is to just populate the matches sequentially from the (shuffled) winners list.
+                    const p1Winner = finalWinners[i * 2];
+                    const p2Winner = finalWinners[i * 2 + 1];
+
                     if (match.p1.name.startsWith('Winner Group')) {
-                       match.p1 = { ...(groupWinners[i*2] || {name: 'TBD'}), score: 0, sets: [] };
+                       match.p1 = { ...(p1Winner || {name: 'TBD'}), score: 0, sets: [] };
                     }
                      if (match.p2.name.startsWith('Winner Group')) {
-                       match.p2 = { ...(groupWinners[i*2 + 1] || {name: 'TBD'}), score: 0, sets: [] };
+                       match.p2 = { ...(p2Winner || {name: 'TBD'}), score: 0, sets: [] };
                     }
+
                     if(match.p2.name === 'TBD' && !match.p1.name.startsWith('Winner')) {
                         match.winner = match.p1;
                         match.isFinished = true;
