@@ -223,11 +223,7 @@ const ResultsTableView = ({ rounds, onUpdateMatch, tournamentCode }: { rounds: R
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {[...round.matches].sort((a, b) => {
-                        const numA = parseInt(a.title.replace(/[^0-9]/g, ''), 10);
-                        const numB = parseInt(b.title.replace(/[^0-9]/g, ''), 10);
-                        return numA - numB;
-                    }).map((match) => (
+                    {[...round.matches].sort((a, b) => a.table - b.table).map((match) => (
                         <TableRow key={match.id} className={cn({'bg-green-100 dark:bg-green-900/20': match.isFinished})}>
                             <TableCell>{match.title}</TableCell>
                             <TableCell>

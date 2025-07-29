@@ -77,100 +77,86 @@ export default function Home() {
 
     let firstRoundMatches: Match[] = [];
     
+    let playersWithByes: Player[] = [...currentPlayers];
     if (isRandomSeeding) {
-        // The traditional seeding logic with byes works well for random too.
-        const playersWithByes = [...currentPlayers];
-        for (let i = 0; i < byes; i++) {
-            // Add BYE placeholders at the end for random distribution
-            playersWithByes.push({ name: 'BYE' });
-        }
-        const shuffledPlayersWithByes = shuffle(playersWithByes);
+      for (let i = 0; i < byes; i++) {
+        playersWithByes.push({ name: 'BYE' });
+      }
+      playersWithByes = shuffle(playersWithByes);
+    } else {
+       // For sequential/traditional, byes should go to top seeds.
+       // The AI seeding should ideally handle this, but as a fallback:
+       const topSeeds = playersWithByes.slice(0, byes);
+       const otherPlayers = playersWithByes.slice(byes);
+       const newPlayerList: Player[] = [];
+       topSeeds.forEach((seed, i) => {
+         newPlayerList.push(seed);
+         newPlayerList.push({ name: 'BYE' });
+       });
+       playersWithByes = [...newPlayerList.slice(0, byes*2), ...otherPlayers];
+       // This logic is complex, let's simplify. Byes are given to top seeds.
+       // The pairing logic will handle the rest.
+       const finalPlayerList = [...currentPlayers];
+       for(let i=0; i<byes; i++){
+          finalPlayerList.splice(i*2 + 1, 0, {name: 'BYE'})
+       }
+       playersWithByes = finalPlayerList;
 
-        for (let i = 0; i < bracketSize / 2; i++) {
-            const p1 = shuffledPlayersWithByes[i * 2];
-            const p2 = shuffledPlayersWithByes[i * 2 + 1];
-            
-            firstRoundMatches.push({
-                id: `m-0-${firstRoundMatches.length}`,
-                p1: { ...p1, score: 0, sets: [] },
-                p2: p2.name === 'BYE' ? { name: 'BYE', score: 0, sets: [] } : { ...p2, score: 0, sets: [] },
-                title: `Match ${firstRoundMatches.length + 1}`,
-                winner: p2.name === 'BYE' ? p1 : (p1.name === 'BYE' ? p2 : undefined),
-                table: firstRoundMatches.length + 1,
-                isFinished: p1.name === 'BYE' || p2.name === 'BYE',
-            });
-        }
-    } else { 
-        // Sequential Seeding: 1v2, 3v4, etc.
-        // Traditional seeding already provides a flat list of matchups,
-        // so we just pair them sequentially.
-        const playersWithByes = [...currentPlayers];
-        for (let i = 0; i < byes; i++) {
-          // For sequential/traditional, byes should go to top seeds.
-          // We add BYE placeholders, and the logic below will pair top seeds with them.
-          // The AI seeding should ideally handle this, but as a fallback:
-          playersWithByes.splice(i * 2 + 1, 0, { name: 'BYE' });
-        }
-        
-        const finalPlayerList = [...currentPlayers];
-        for(let i=0; i < byes; i++) {
-          finalPlayerList.push({ name: 'BYE' });
-        }
-
-
-        for (let i = 0; i < bracketSize / 2; i++) {
-          const p1 = finalPlayerList[i*2];
-          const p2 = finalPlayerList[i*2 + 1];
-
-          firstRoundMatches.push({
-              id: `m-0-${firstRoundMatches.length}`,
-              p1: { ...p1, score: 0, sets: [] },
-              p2: p2?.name === 'BYE' ? { name: 'BYE', score: 0, sets: [] } : { ...(p2 || {name: 'BYE'}), score: 0, sets: [] },
-              title: `Match ${firstRoundMatches.length + 1}`,
-              winner: p2?.name === 'BYE' || !p2 ? p1 : (p1.name === 'BYE' ? p2 : undefined),
-              table: firstRoundMatches.length + 1,
-              isFinished: p1.name === 'BYE' || p2?.name === 'BYE' || !p2,
-          });
-        }
     }
 
+    // For non-random seeding, we pair sequentially now.
+    // For random, they are already shuffled.
+    for (let i = 0; i < bracketSize / 2; i++) {
+        const p1 = playersWithByes[i * 2];
+        const p2 = playersWithByes[i * 2 + 1];
+        
+        firstRoundMatches.push({
+            id: `m-0-${firstRoundMatches.length}`,
+            p1: { ...p1, score: 0, sets: [] },
+            p2: p2?.name === 'BYE' || !p2 ? { name: 'BYE', score: 0, sets: [] } : { ...p2, score: 0, sets: [] },
+            title: `Match ${firstRoundMatches.length + 1}`,
+            winner: p2?.name === 'BYE' || !p2 ? p1 : (p1.name === 'BYE' ? p2 : undefined),
+            table: firstRoundMatches.length + 1,
+            isFinished: p1.name === 'BYE' || p2?.name === 'BYE' || !p2,
+        });
+    }
 
     rounds.push({ title: `Round 1`, matches: firstRoundMatches });
 
-    let previousRoundWinners = firstRoundMatches.map(m => m.winner);
     let previousRoundMatches = firstRoundMatches;
     
-    while (previousRoundWinners.filter(p => p !== undefined).length > 1 || (previousRoundWinners.length > 1 && previousRoundWinners.some(p=> p === undefined))) {
+    while (previousRoundMatches.length > 1) {
       const nextRoundMatches: Match[] = [];
-      const nextRoundWinners: (Player | undefined)[] = [];
-      
-      // Filter out BYE players from winners before creating the next round
-      let actualWinners = previousRoundWinners.filter(p => p && p.name !== 'BYE') as Player[];
-      let placeholders = previousRoundWinners.filter(p => p === undefined);
+      let winnersSoFar = previousRoundMatches.map(m => m.winner);
+      let participantsForNextRound: (Player | undefined)[] = [];
 
+      // For random seeding, shuffle the winners before pairing them.
       if (isRandomSeeding) {
-        actualWinners = shuffle(actualWinners);
+        const actualWinners = winnersSoFar.filter(w => w !== undefined) as Player[];
+        const shuffledWinners = shuffle(actualWinners);
+        const undefinedSlots = winnersSoFar.length - actualWinners.length;
+        participantsForNextRound = [...shuffledWinners, ...Array(undefinedSlots).fill(undefined)];
+      } else {
+        participantsForNextRound = winnersSoFar;
       }
-      
-      const participantsForNextRound = [...actualWinners, ...placeholders];
 
       for (let i = 0; i < participantsForNextRound.length; i += 2) {
         const p1 = participantsForNextRound[i];
         const p2 = participantsForNextRound[i + 1];
 
         // Find original match titles for placeholders
-        const findMatchTitle = (playerIndex: number): string => {
-            const match = previousRoundMatches[playerIndex];
-            return match?.title || `Match ${playerIndex + 1}`;
+        const findMatchTitle = (matchIndex: number): string => {
+            const match = previousRoundMatches[matchIndex];
+            return match?.title || `Match ${matchIndex + 1}`;
         }
         
-        const p1MatchIndex = isRandomSeeding ? i : previousRoundWinners.indexOf(p1);
-        const p2MatchIndex = isRandomSeeding ? i + 1: previousRoundWinners.indexOf(p2);
-
+        const p1MatchTitle = p1?.name || `Winner ${findMatchTitle(i)}`;
+        const p2MatchTitle = p2?.name || `Winner ${findMatchTitle(i + 1)}`;
+        
         const match = {
           id: `m-${rounds.length}-${nextRoundMatches.length}`,
-          p1: { name: p1?.name || `Winner ${findMatchTitle(p1MatchIndex)}`, score: 0, sets: [], rank: p1?.rank },
-          p2: { name: p2?.name || `Winner ${findMatchTitle(p2MatchIndex)}`, score: 0, sets: [], rank: p2?.rank },
+          p1: { name: p1MatchTitle, score: 0, sets: [], rank: p1?.rank },
+          p2: { name: p2MatchTitle, score: 0, sets: [], rank: p2?.rank },
           title: `Match ${rounds.flatMap(r => r.matches).length + nextRoundMatches.length + 1}`,
           winner: undefined,
           table: nextRoundMatches.length + 1,
@@ -185,10 +171,9 @@ export default function Home() {
         }
 
         nextRoundMatches.push(match);
-        nextRoundWinners.push(match.winner);
       }
       
-      if (nextRoundMatches.length === 0 && actualWinners.length <= 1) {
+      if (nextRoundMatches.length === 0) {
           break; // Tournament is over
       }
 
@@ -199,7 +184,6 @@ export default function Home() {
       else if (nextRoundMatches.length <= 4) roundTitle = 'Quarter-Finals';
 
       rounds.push({ title: roundTitle, matches: nextRoundMatches });
-      previousRoundWinners = nextRoundWinners;
       previousRoundMatches = nextRoundMatches;
     }
 
@@ -226,6 +210,7 @@ export default function Home() {
     }
     
     const groupMatches: Match[] = [];
+    let matchCounter = 1;
     groups.forEach((group, index) => {
       // All-play-all within the group
       for (let i = 0; i < group.length; i++) {
@@ -234,11 +219,12 @@ export default function Home() {
             id: `m-group-${groupMatches.length}`,
             p1: { ...group[i], score: 0, sets: [] },
             p2: { ...group[j], score: 0, sets: [] },
-            title: `Grupo ${index + 1} - Match ${groupMatches.length + 1}`,
+            title: `Match ${matchCounter}`,
             winner: undefined,
-            table: groupMatches.length + 1,
+            table: matchCounter,
             isFinished: false,
           });
+          matchCounter++;
         }
       }
     });
@@ -259,7 +245,12 @@ export default function Home() {
     
     const knockoutRounds = generateBracketRounds(knockoutPlayers, isRandomSeeding);
     knockoutRounds.forEach(round => {
-      round.title = `Fase Final - ${round.title}`
+      round.title = `Fase Final - ${round.title}`;
+      round.matches.forEach(match => {
+        match.table = matchCounter;
+        match.title = `Match ${matchCounter}`;
+        matchCounter++;
+      })
     })
 
     return [groupRound, ...knockoutRounds];
@@ -272,6 +263,7 @@ export default function Home() {
 
     let allMatches: Match[] = [];
     let playerList = [...players];
+    let matchCounter = 1;
     
     for (let i = 0; i < numPlayers; i++) {
       for (let j = i + 1; j < numPlayers; j++) {
@@ -279,11 +271,12 @@ export default function Home() {
           id: `m-0-${allMatches.length}`,
           p1: { ...playerList[i], score: 0, sets: [] },
           p2: { ...playerList[j], score: 0, sets: [] },
-          title: `Match ${allMatches.length + 1}`,
+          title: `Match ${matchCounter}`,
           winner: undefined,
-          table: allMatches.length + 1,
+          table: matchCounter,
           isFinished: false,
         });
+        matchCounter++;
       }
     }
     
@@ -294,8 +287,8 @@ export default function Home() {
           singleRoundMatches.map((m, idx) => ({ 
             ...m, 
             id: `m-${r}-${idx}`,
-            title: `Match ${allMatches.length + idx + 1}`,
-            table: allMatches.length + idx + 1,
+            title: `Match ${matchCounter}`,
+            table: matchCounter++,
           }))
         );
       }
@@ -466,8 +459,8 @@ export default function Home() {
             
             if (isRandomSeeding) {
               const definedWinners = winners.filter(w => w !== undefined) as Player[];
-              const undefinedSlots = winners.length - definedWinners.length;
               const shuffledWinners = shuffle(definedWinners);
+              const undefinedSlots = winners.length - definedWinners.length;
               winners = [...shuffledWinners, ...Array(undefinedSlots).fill(undefined)];
             }
 
