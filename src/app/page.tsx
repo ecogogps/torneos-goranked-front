@@ -127,9 +127,13 @@ export default function Home() {
     const numGroups = Math.floor(numPlayers / 2);
     const groups: Player[][] = Array.from({ length: numGroups }, () => []);
     
-    // Distribute players into groups based on traditional seeding
+    // Distribute players into groups respecting the seeded order
+    // The seeding flow (snake or otherwise) now dictates the player order for groups.
     for (let i = 0; i < numPlayers; i++) {
-        groups[i % numGroups].push(players[i]);
+        const groupIndex = Math.floor(i / (numPlayers/numGroups));
+        if(groups[groupIndex]) {
+          groups[groupIndex].push(players[i]);
+        }
     }
     
     const groupMatches: Match[] = [];
@@ -300,13 +304,18 @@ export default function Home() {
         const allGroupMatchesFinished = newRounds[0].matches.every(m => m.isFinished);
         
         if (allGroupMatchesFinished) {
-            const groupWinners: Player[] = [];
-            const numGroups = Math.floor(seededPlayers.length / 2);
+            const numPlayers = seededPlayers.length;
+            const numGroups = Math.floor(numPlayers / 2);
             const groups: Player[][] = Array.from({ length: numGroups }, () => []);
-            for (let i = 0; i < seededPlayers.length; i++) {
-                groups[i % numGroups].push(seededPlayers[i]);
+            
+            for (let i = 0; i < numPlayers; i++) {
+                const groupIndex = Math.floor(i / (numPlayers/numGroups));
+                if(groups[groupIndex]) {
+                  groups[groupIndex].push(seededPlayers[i]);
+                }
             }
 
+            const groupWinners: Player[] = [];
             groups.forEach((group, index) => {
                 const groupPlayerNames = group.map(p => p.name);
                 const matchesInGroup = newRounds[0].matches.filter(m => 

@@ -102,7 +102,7 @@ export default function MatchTracker({ tournament, rounds, onUpdateMatch, seeded
         </CardHeader>
       </Card>
       
-      {isGroupStage && tournament.tipoSiembra === 'tradicional' && <GroupStageView seededPlayers={seededPlayers} />}
+      {isGroupStage && <GroupStageView seededPlayers={seededPlayers} />}
 
       {renderBrackets()}
 
@@ -130,25 +130,42 @@ const GroupStageView = ({ seededPlayers }: { seededPlayers: Player[] }) => {
     const numPlayers = seededPlayers.length;
     if (numPlayers === 0) return null;
 
-    const groups: Player[][] = [];
-    for (let i = 0; i < numPlayers; i += 2) {
-        const group: Player[] = [seededPlayers[i]];
-        if (seededPlayers[i+1]) {
-            group.push(seededPlayers[i+1]);
-        }
-        groups.push(group);
+    const numGroups = Math.floor(numPlayers / 2);
+    const groups: Player[][] = Array.from({ length: numGroups }, () => []);
+
+    if (numPlayers < 4) return null;
+
+    // The seededPlayers list is now correctly ordered by the "snake" algorithm.
+    // We just need to divide it into groups.
+    const groupSize = Math.ceil(numPlayers / numGroups);
+    for (let i = 0; i < numGroups; i++) {
+        groups[i] = seededPlayers.slice(i * groupSize, (i + 1) * groupSize);
     }
+    
+    // A different way to populate groups based on the image logic
+    const rankedPlayers = [...seededPlayers].sort((a, b) => (b.rank || 0) - (a.rank || 0));
+    const snakeGroups: Player[][] = Array.from({ length: numGroups }, () => []);
+    let direction = 1;
+    for (let i = 0; i < rankedPlayers.length; i++) {
+        const player = rankedPlayers[i];
+        const groupIndex = direction === 1 ? i % numGroups : numGroups - 1 - (i % numGroups);
+        snakeGroups[groupIndex].push(player);
+        if ((i + 1) % numGroups === 0) {
+            direction *= -1;
+        }
+    }
+
 
     return (
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Users />Fase de Grupos</CardTitle>
-                <CardDescription>Configuración y visualización de grupos generados por siembra {TIPO_SIEMBRA_OPTIONS.find(o => o.value === 'tradicional')?.label}.</CardDescription>
+                <CardDescription>Configuración y visualización de grupos generados por el tipo de siembra seleccionado.</CardDescription>
             </CardHeader>
             <CardContent className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {groups.map((group, index) => (
+                {snakeGroups.map((group, index) => (
                     <Card key={index}>
-                        <CardHeader><CardTitle>GROUP {index + 1}</CardTitle></CardHeader>
+                        <CardHeader><CardTitle>GRUPO {index + 1}</CardTitle></CardHeader>
                         <CardContent className="space-y-2">
                             {group.map(player => <p key={player.name}>{player.name} {player.rank ? `(${player.rank})` : ''}</p>)}
                         </CardContent>
