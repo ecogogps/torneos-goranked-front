@@ -45,6 +45,7 @@ import Image from "next/image";
 import { Send, Rocket, Image as ImageIcon } from "lucide-react";
 import TournamentBanner from "./TournamentBanner";
 import * as React from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface TournamentFormProps {
   onSubmit: (data: Tournament) => void;
@@ -73,8 +74,10 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
       tipoEliminacion: "Por Grupos",
       numeroParticipantes: "8",
       numeroRondas: "1",
+      rankingTodos: true,
       rankingDesde: "U800",
       rankingHasta: "",
+      edadTodos: true,
       edadDesde: "",
       edadHasta: "",
       sexo: "masculino",
@@ -93,6 +96,8 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
   });
 
   const tipoEliminacion = form.watch("tipoEliminacion");
+  const rankingTodos = form.watch("rankingTodos");
+  const edadTodos = form.watch("edadTodos");
   const tournamentDataForPreview = form.watch();
 
   const getSiembraOptions = () => {
@@ -270,9 +275,65 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
               )}
             </div>
             
-            <div className="grid md:grid-cols-3 gap-6">
-              <FormItem><FormLabel>Ranking</FormLabel><div className="flex gap-2 items-center"><FormControl><Input {...form.register("rankingDesde")} placeholder="Desde" /></FormControl><span>a</span><FormControl><Input {...form.register("rankingHasta")} placeholder="Hasta" /></FormControl></div></FormItem>
-              <FormItem><FormLabel>Edad</FormLabel><div className="flex gap-2 items-center"><FormControl><Input {...form.register("edadDesde")} placeholder="Desde" /></FormControl><span>a</span><FormControl><Input {...form.register("edadHasta")} placeholder="Hasta" /></FormControl></div></FormItem>
+             <div className="grid md:grid-cols-3 gap-6 items-start">
+              <FormItem>
+                <div className="flex items-center gap-4 mb-2">
+                  <FormLabel>Ranking</FormLabel>
+                  <FormField
+                    control={form.control}
+                    name="rankingTodos"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormLabel className="font-normal">Todos</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="flex gap-2 items-center">
+                  <FormControl>
+                    <Input {...form.register("rankingDesde")} placeholder="Desde" disabled={rankingTodos} />
+                  </FormControl>
+                  <span>a</span>
+                  <FormControl>
+                    <Input {...form.register("rankingHasta")} placeholder="Hasta" disabled={rankingTodos} />
+                  </FormControl>
+                </div>
+              </FormItem>
+              <FormItem>
+                 <div className="flex items-center gap-4 mb-2">
+                  <FormLabel>Edad</FormLabel>
+                  <FormField
+                    control={form.control}
+                    name="edadTodos"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormLabel className="font-normal">Todos</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="flex gap-2 items-center">
+                  <FormControl>
+                    <Input {...form.register("edadDesde")} placeholder="Desde" disabled={edadTodos} />
+                  </FormControl>
+                  <span>a</span>
+                  <FormControl>
+                    <Input {...form.register("edadHasta")} placeholder="Hasta" disabled={edadTodos} />
+                  </FormControl>
+                </div>
+              </FormItem>
               <FormField name="sexo" render={({ field }) => <FormItem><FormLabel>Sexo</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{SEXO_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></FormItem>} />
             </div>
 
