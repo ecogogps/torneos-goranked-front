@@ -38,6 +38,7 @@ import {
   TIPO_ELIMINACION_OPTIONS,
   SEXO_OPTIONS,
   NUMERO_PARTICIPANTES_OPTIONS,
+  REENVIO_INVITACION_OPTIONS,
 } from "@/lib/constants";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -75,7 +76,7 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
       numeroParticipantes: "8",
       numeroRondas: "1",
       rankingTodos: true,
-      rankingDesde: "U800",
+      rankingDesde: "",
       rankingHasta: "",
       edadTodos: true,
       edadDesde: "",
@@ -83,6 +84,8 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
       sexo: "masculino",
       afectaRanking: "si",
       sorteoSaque: "si",
+      invitacionSistema: "si",
+      reenvioInvitacion: "Cada 7 Dias",
       premio1: "$ 100,00",
       premio2: "$ 75,00",
       premio3: "orden de comida",
@@ -98,6 +101,7 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
   const tipoEliminacion = form.watch("tipoEliminacion");
   const rankingTodos = form.watch("rankingTodos");
   const edadTodos = form.watch("edadTodos");
+  const invitacionSistema = form.watch("invitacionSistema");
   const tournamentDataForPreview = form.watch();
 
   const getSiembraOptions = () => {
@@ -340,6 +344,30 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
             <div className="grid md:grid-cols-2 gap-6">
               <FormField name="afectaRanking" render={({ field }) => <FormItem><FormLabel>Afecta al ranking</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4"><FormItem><FormControl><RadioGroupItem value="si" /></FormControl><FormLabel>SI</FormLabel></FormItem><FormItem><FormControl><RadioGroupItem value="no" /></FormControl><FormLabel>NO</FormLabel></FormItem></RadioGroup></FormControl></FormItem>} />
               <FormField name="sorteoSaque" render={({ field }) => <FormItem><FormLabel>Sorteo de Saque</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4"><FormItem><FormControl><RadioGroupItem value="si" /></FormControl><FormLabel>SI</FormLabel></FormItem><FormItem><FormControl><RadioGroupItem value="no" /></FormControl><FormLabel>NO</FormLabel></FormItem></RadioGroup></FormControl></FormItem>} />
+            </div>
+             <div className="grid md:grid-cols-2 gap-6">
+               <FormField name="invitacionSistema" render={({ field }) => <FormItem><FormLabel>Envío de invitación por sistema</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4"><FormItem><FormControl><RadioGroupItem value="si" /></FormControl><FormLabel>SI</FormLabel></FormItem><FormItem><FormControl><RadioGroupItem value="no" /></FormControl><FormLabel>NO</FormLabel></FormItem></RadioGroup></FormControl></FormItem>} />
+              {invitacionSistema === "si" && (
+                <FormField
+                  control={form.control}
+                  name="reenvioInvitacion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Re-envío de invitación Programable</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {REENVIO_INVITACION_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             <Separator />

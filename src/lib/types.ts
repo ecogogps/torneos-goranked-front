@@ -26,6 +26,8 @@ export const TournamentSchema = z.object({
   sexo: z.string(),
   afectaRanking: z.enum(["si", "no"]),
   sorteoSaque: z.enum(["si", "no"]),
+  invitacionSistema: z.enum(["si", "no"]),
+  reenvioInvitacion: z.string().optional(),
   premio1: z.string().optional(),
   premio2: z.string().optional(),
   premio3: z.string().optional(),
