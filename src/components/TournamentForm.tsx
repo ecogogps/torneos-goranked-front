@@ -43,7 +43,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
-import { Send, Rocket, Image as ImageIcon } from "lucide-react";
+import { Send, Rocket, Image as ImageIcon, Users, User } from "lucide-react";
 import TournamentBanner from "./TournamentBanner";
 import * as React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -52,9 +52,12 @@ interface TournamentFormProps {
   onSubmit: (data: Tournament) => void;
 }
 
+type TournamentType = "individual" | "team";
+
 export default function TournamentForm({ onSubmit }: TournamentFormProps) {
   const { toast } = useToast();
   const [previewImage, setPreviewImage] = React.useState<string | null>(null);
+  const [tournamentType, setTournamentType] = React.useState<TournamentType | null>(null);
 
   const form = useForm<Tournament>({
     resolver: zodResolver(TournamentSchema),
@@ -95,6 +98,9 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
       telefono: "984131574",
       ballInfo: "Victa 40+",
       bannerImage: null,
+      jugadoresPorEquipo: "3",
+      maxRankingEquipo: "5000",
+      categorias: ["A Categoria U1400 - U1599", "B Categoria U1600 - 1699", "C Categoria U1800 - U1899", "U5000"]
     },
   });
 
@@ -124,13 +130,34 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
     }
   };
 
+  if (!tournamentType) {
+    return (
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">Seleccione el Tipo de Torneo</CardTitle>
+          <CardDescription>Elija si el torneo es para jugadores individuales o para equipos de 2 o más jugadores.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid md:grid-cols-2 gap-6">
+          <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => setTournamentType("individual")}>
+            <User className="w-8 h-8" />
+            <span className="text-lg">Torneo Individual</span>
+          </Button>
+          <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => setTournamentType("team")}>
+            <Users className="w-8 h-8" />
+            <span className="text-lg">Torneo por Equipos (+2)</span>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-2xl font-bold">
-              Formulario de Creación de Torneo
+              Formulario de Creación de Torneo ({tournamentType === 'individual' ? 'Individual' : 'Por Equipos'})
             </CardTitle>
             <CardDescription>
               Complete los detalles para crear un nuevo torneo.
@@ -215,6 +242,48 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
                   </FormItem>
                 )}
               />
+
+              {tournamentType === 'team' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="jugadoresPorEquipo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cantidad de Jugadores por Equipo</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="maxRankingEquipo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Máximo Ranking entre Jugadores</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormItem>
+                    <FormLabel>Categorías a Jugar</FormLabel>
+                     <Select defaultValue="A Categoria U1400 - U1599">
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {form.getValues('categorias')?.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                  </FormItem>
+                </>
+              )}
               
               { (tipoEliminacion === 'Eliminacion Directa' || tipoEliminacion === 'Por Grupos' || tipoEliminacion === 'Todos contra todos') && (
                 <FormField
@@ -222,7 +291,7 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
                   name="numeroParticipantes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Número de Participantes</FormLabel>
+                      <FormLabel>Número de {tournamentType === 'individual' ? 'Participantes' : 'Equipos'}</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -411,6 +480,7 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
         </Card>
         
         <div className="flex justify-end gap-4">
+           <Button type="button" variant="outline" onClick={() => setTournamentType(null)}>Atrás</Button>
           <Button type="submit" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
             <Rocket className="mr-2" /> CREAR TORNEO
           </Button>

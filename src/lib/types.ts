@@ -37,6 +37,10 @@ export const TournamentSchema = z.object({
   telefono: z.string().min(1, "Teléfono es requerido"),
   ballInfo: z.string().optional(),
   bannerImage: z.string().nullable().optional(),
+  // Campos para torneos por equipos
+  jugadoresPorEquipo: z.string().optional(),
+  maxRankingEquipo: z.string().optional(),
+  categorias: z.array(z.string()).optional(),
 });
 
 export type Tournament = z.infer<typeof TournamentSchema>;
