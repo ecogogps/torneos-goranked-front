@@ -4,7 +4,7 @@ import {Toaster} from '@/components/ui/toaster';
 import Header from '@/components/Header';
 
 export const metadata: Metadata = {
-  title: 'Racket Power',
+  title: 'gorankeds',
   description: 'Sistema de gestión de torneos de raqueta.',
 };
 
