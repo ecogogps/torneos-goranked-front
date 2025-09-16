@@ -227,7 +227,7 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
                       defaultValue={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger className="ring-2 ring-accent">
+                        <SelectTrigger className="ring-2 ring-primary">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -481,7 +481,7 @@ export default function TournamentForm({ onSubmit }: TournamentFormProps) {
         
         <div className="flex justify-end gap-4">
            <Button type="button" variant="outline" onClick={() => setTournamentType(null)}>Atrás</Button>
-          <Button type="submit" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
+          <Button type="submit" size="lg" variant="default" className="bg-accent text-accent-foreground hover:bg-accent/90">
             <Rocket className="mr-2" /> CREAR TORNEO
           </Button>
         </div>
